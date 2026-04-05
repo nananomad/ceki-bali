@@ -323,7 +323,7 @@ body {
   align-items: center;
   justify-content: center;
   width: 38px;
-  height: 54px;
+  height: 82px;
   border-radius: 5px;
   border: 1.5px solid;
   font-family: 'Cinzel', serif;
@@ -580,4 +580,5 @@ body {
 @media (max-width: 768px) {
   .main { grid-template-columns: 1fr; }
   .sidebar { max-height: 220px; }
+     }
 }

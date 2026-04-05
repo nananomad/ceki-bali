@@ -1,0 +1,2037 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ceki Simulator v11 — Balinese Card Game</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;800&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --gold: #c9a84c;
+  --gold-light: #e8cc7a;
+  --gold-dark: #8b6914;
+  --bg: #0a1a0f;
+  --bg2: #0f2318;
+  --text: #fdf6e3;
+  --honours-color: #e8cc7a;
+  --coins-color: #f4a444;
+  --strings-color: #6ab4f0;
+  --myriads-color: #f07070;
+  --soca-color: #50e090;
+  --patuh-color: #70b0f0;
+  --srigat-color: #f0b050;
+  --mecari-color: #f06060;
+  --mejaga-color: #a060f0;
+  --gantung-color: #ff4444;
+  --leftover-color: #888888;
+  --open-color: #9a6ad9;
+  --locked-color: #4a9ad9;
+  --discard-color: #c87a3a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===================== HEADER ===================== */
+.header {
+  text-align: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(201,168,76,0.3);
+  background: linear-gradient(180deg, rgba(201,168,76,0.06) 0%, transparent 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.header-title { flex: 1; text-align: center; }
+
+.header h1 {
+  font-family: 'Cinzel', serif;
+  color: var(--gold);
+  font-size: 1.4rem;
+  letter-spacing: 0.4em;
+  text-shadow: 0 0 20px rgba(201,168,76,0.5);
+}
+
+.header p {
+  color: rgba(201,168,76,0.45);
+  font-style: italic;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+/* ===================== CONTROLS ===================== */
+.controls-bar {
+  padding: 8px 16px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+  background: rgba(0,0,0,0.2);
+}
+
+.btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  padding: 6px 14px;
+  border: 1px solid var(--gold-dark);
+  background: linear-gradient(135deg, rgba(201,168,76,0.12), rgba(201,168,76,0.04));
+  color: var(--gold);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+}
+.btn:hover { background: linear-gradient(135deg, rgba(201,168,76,0.28), rgba(201,168,76,0.1)); border-color: var(--gold); }
+.btn.primary { background: linear-gradient(135deg, rgba(201,168,76,0.35), rgba(201,168,76,0.15)); border-color: var(--gold); }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn.export { border-color: var(--strings-color); color: var(--strings-color); background: rgba(106,180,240,0.08); }
+.btn.export:hover { background: rgba(106,180,240,0.18); }
+
+.speed-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: rgba(201,168,76,0.55);
+  margin-left: auto;
+}
+.speed-wrap input { width: 80px; accent-color: var(--gold); }
+
+/* ===================== STATUS BAR ===================== */
+.status-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid rgba(201,168,76,0.15);
+  background: rgba(0,0,0,0.15);
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 14px;
+  border-right: 1px solid rgba(201,168,76,0.1);
+  min-width: 80px;
+}
+
+.stat-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  color: rgba(201,168,76,0.4);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  font-size: 0.85rem;
+  color: var(--gold-light);
+  font-weight: 600;
+  margin-top: 1px;
+}
+
+.stat-value.gantung { color: var(--gantung-color); }
+
+/* ===================== MAIN LAYOUT ===================== */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.game-area {
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ===================== PLAYER CARD ===================== */
+.player-card {
+  border: 1px solid rgba(201,168,76,0.18);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  background: rgba(0,0,0,0.15);
+}
+
+.player-card.active    { border-color: var(--gold); box-shadow: 0 0 14px rgba(201,168,76,0.18); }
+.player-card.mecari    { border-color: var(--mecari-color); box-shadow: 0 0 10px rgba(240,96,96,0.18); }
+.player-card.mejaga    { border-color: var(--mejaga-color); box-shadow: 0 0 10px rgba(160,96,240,0.18); }
+.player-card.winner    { border-color: var(--soca-color); box-shadow: 0 0 20px rgba(80,224,144,0.4); animation: winPulse 1s infinite; }
+
+@keyframes winPulse {
+  0%,100% { box-shadow: 0 0 20px rgba(80,224,144,0.4); }
+  50%     { box-shadow: 0 0 40px rgba(80,224,144,0.8); }
+}
+
+/* Player header */
+.player-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(0,0,0,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.player-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.72rem;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  flex: 1;
+}
+
+.badge {
+  font-size: 0.55rem;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+.badge-active  { background: rgba(201,168,76,0.15);  color: var(--gold);          border-color: var(--gold-dark); }
+.badge-mecari  { background: rgba(240,96,96,0.15);   color: var(--mecari-color);  border-color: var(--mecari-color); }
+.badge-mejaga  { background: rgba(160,96,240,0.15);  color: var(--mejaga-color);  border-color: var(--mejaga-color); }
+.badge-winner  { background: rgba(80,224,144,0.15);  color: var(--soca-color);    border-color: var(--soca-color); }
+.badge-gantung { background: rgba(255,68,68,0.15);   color: var(--gantung-color); border-color: var(--gantung-color); }
+
+.player-stats {
+  font-size: 0.6rem;
+  color: rgba(201,168,76,0.35);
+  white-space: nowrap;
+}
+
+/* Player body */
+.player-body {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ===================== COMBO ROWS ===================== */
+.combo-section {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.combo-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.04);
+  background: rgba(0,0,0,0.15);
+  min-height: 62px;
+}
+
+/* Row color themes */
+.combo-row.soca    { border-color: rgba(80,224,144,0.2);  background: rgba(80,224,144,0.04); }
+.combo-row.patuh   { border-color: rgba(112,176,240,0.2); background: rgba(112,176,240,0.04); }
+.combo-row.srigat  { border-color: rgba(240,176,80,0.2);  background: rgba(240,176,80,0.04); }
+.combo-row.locked  { border-color: rgba(74,154,217,0.3);  background: rgba(74,154,217,0.06); }
+.combo-row.open    { border-color: rgba(154,106,217,0.3); background: rgba(154,106,217,0.06); }
+.combo-row.discard { border-color: rgba(200,122,58,0.2);  background: rgba(200,122,58,0.04); }
+.combo-row.leftover{ border-color: rgba(120,120,120,0.2); background: rgba(120,120,120,0.04); }
+
+/* Row label */
+.row-label {
+  writing-mode: vertical-lr;
+  text-orientation: mixed;
+  font-family: 'Cinzel', serif;
+  font-size: 0.42rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 1px;
+  min-width: 18px;
+  text-align: center;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.row-label.soca    { color: var(--soca-color);    background: rgba(80,224,144,0.08); }
+.row-label.patuh   { color: var(--patuh-color);   background: rgba(112,176,240,0.08); }
+.row-label.srigat  { color: var(--srigat-color);  background: rgba(240,176,80,0.08); }
+.row-label.locked  { color: var(--locked-color);  background: rgba(74,154,217,0.08); }
+.row-label.open    { color: var(--open-color);    background: rgba(154,106,217,0.08); }
+.row-label.discard { color: var(--discard-color); background: rgba(200,122,58,0.08); }
+.row-label.leftover{ color: var(--leftover-color);background: rgba(120,120,120,0.08); }
+
+/* Cards container */
+.cards-wrap {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 1;
+}
+
+/* Seeking info */
+.seeking-info {
+  font-size: 0.6rem;
+  color: rgba(74,154,217,0.8);
+  font-style: italic;
+  padding: 2px 6px;
+  background: rgba(74,154,217,0.08);
+  border-radius: 4px;
+  border: 1px solid rgba(74,154,217,0.2);
+}
+
+/* Row extra info */
+.row-info {
+  font-size: 0.58rem;
+  color: rgba(255,255,255,0.3);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* Discard count badge */
+.discard-count {
+  font-size: 0.58rem;
+  color: rgba(200,122,58,0.6);
+  padding: 2px 5px;
+  border: 1px solid rgba(200,122,58,0.2);
+  border-radius: 3px;
+  font-family: 'Cinzel', serif;
+}
+
+/* ===================== CARDS ===================== */
+.card {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 54px;
+  border-radius: 5px;
+  border: 1.5px solid;
+  font-family: 'Cinzel', serif;
+  text-align: center;
+  padding: 2px;
+  line-height: 1.2;
+  transition: transform 0.15s;
+  position: relative;
+  cursor: default;
+  flex-shrink: 0;
+}
+
+.card:hover { transform: translateY(-5px); z-index: 10; }
+
+.card .cn { font-size: 0.8rem; font-weight: 700; line-height: 1; }
+.card .nm { font-size: 0.36rem; line-height: 1.1; text-align: center; margin-top: 1px; }
+.card .tp { font-size: 0.3rem; opacity: 0.6; margin-top: 1px; }
+
+.card.honours { background: linear-gradient(135deg,#2a2a10,#1a1a08); border-color: var(--honours-color); color: var(--honours-color); }
+.card.coins   { background: linear-gradient(135deg,#2a1a08,#1a1008); border-color: var(--coins-color);   color: var(--coins-color); }
+.card.strings { background: linear-gradient(135deg,#082028,#041018); border-color: var(--strings-color); color: var(--strings-color); }
+.card.myriads { background: linear-gradient(135deg,#280808,#180404); border-color: var(--myriads-color); color: var(--myriads-color); }
+
+.card.back {
+  background: linear-gradient(135deg,#1a3a28,#0f2d1b);
+  border-color: rgba(74,154,217,0.5);
+  color: rgba(74,154,217,0.6);
+  font-size: 1.1rem;
+}
+
+/* Gantung highlight */
+.card.gantung {
+  outline: 2px solid var(--gantung-color);
+  outline-offset: 1px;
+  animation: gantungBlink 1.2s ease infinite;
+}
+
+@keyframes gantungBlink {
+  0%,100% { outline-color: #ff4444; box-shadow: 0 0 5px rgba(255,68,68,0.5); }
+  50%     { outline-color: #ff8888; box-shadow: 0 0 10px rgba(255,68,68,0.7); }
+}
+
+/* Dead for Soca only */
+.card.dead { opacity: 0.45; filter: grayscale(60%); }
+
+/* Card image */
+.card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 3px;
+  display: block;
+  pointer-events: none;
+}
+
+.card-img-wrap {
+  position: absolute;
+  inset: 0;
+  border-radius: 3px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f0e8;
+}
+
+/* Overlay info saat hover */
+.card-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 100%);
+  padding: 3px 2px 2px;
+  border-radius: 0 0 3px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.card:hover .card-overlay { opacity: 1; }
+
+.card-overlay-name {
+  font-size: 0.3rem;
+  color: #fff;
+  text-align: center;
+  line-height: 1.1;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.06em;
+}
+
+/* Dead card in open pile — can be lifted */
+.card.dead-open {
+  opacity: 0.55;
+  filter: grayscale(40%);
+  outline: 1.5px dashed rgba(255,200,50,0.6);
+  outline-offset: 1px;
+}
+
+/* Open pile card */
+.card.is-open { outline: 1.5px solid rgba(154,106,217,0.6); outline-offset: 1px; }
+
+/* ===================== SIDEBAR ===================== */
+.sidebar {
+  border-left: 1px solid rgba(201,168,76,0.18);
+  display: flex;
+  flex-direction: column;
+  background: rgba(0,0,0,0.18);
+  min-height: 0;
+}
+
+.sidebar-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(201,168,76,0.18);
+  font-family: 'Cinzel', serif;
+  font-size: 0.65rem;
+  color: var(--gold);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.log {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.72rem;
+  min-height: 0;
+}
+
+.log-entry {
+  padding: 3px 7px;
+  border-radius: 3px;
+  border-left: 2px solid transparent;
+  line-height: 1.4;
+  animation: fadeIn 0.25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity:0; transform:translateY(3px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.log-normal  { border-color: rgba(201,168,76,0.3);  color: rgba(253,246,227,0.65); }
+.log-action  { border-color: var(--strings-color);  color: var(--strings-color); background: rgba(106,180,240,0.04); }
+.log-mecari  { border-color: var(--mecari-color);   color: var(--mecari-color);  background: rgba(240,96,96,0.04); }
+.log-mejaga  { border-color: var(--mejaga-color);   color: var(--mejaga-color);  background: rgba(160,96,240,0.04); }
+.log-gantung { border-color: var(--gantung-color);  color: #ff8866;              background: rgba(255,68,68,0.04); }
+.log-ceki    { border-color: var(--soca-color);     color: var(--soca-color);    background: rgba(80,224,144,0.08); font-weight:bold; font-size:0.85rem; }
+.log-round   { border-color: var(--gold);           color: var(--gold);          background: rgba(201,168,76,0.05); font-family:'Cinzel',serif; letter-spacing:0.08em; }
+.log-draw    { border-color: rgba(201,168,76,0.15); color: rgba(253,246,227,0.35); font-style:italic; }
+
+/* Legend */
+.sidebar-legend {
+  padding: 6px 10px;
+  border-top: 1px solid rgba(201,168,76,0.15);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.leg { display:flex; align-items:center; gap:3px; font-size:0.55rem; color:rgba(253,246,227,0.45); }
+.leg-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+/* ===================== WINNER OVERLAY ===================== */
+.winner-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.88);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 18px;
+}
+.winner-overlay.show { display: flex; }
+
+.winner-box {
+  background: linear-gradient(135deg,#1a3a28,#0f2d1b);
+  border: 3px solid var(--gold);
+  border-radius: 14px;
+  padding: 40px 60px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(201,168,76,0.4);
+}
+
+.winner-ceki {
+  font-family: 'Cinzel', serif;
+  font-size: 3rem;
+  color: var(--gold);
+  letter-spacing: 0.5em;
+  animation: cekiPulse 0.5s ease infinite alternate;
+}
+
+@keyframes cekiPulse {
+  from { text-shadow: 0 0 20px rgba(201,168,76,0.6); }
+  to   { text-shadow: 0 0 50px rgba(201,168,76,1); }
+}
+
+.winner-name   { font-family:'Cinzel',serif; font-size:1.1rem; color:var(--gold-light); margin-top:8px; letter-spacing:0.2em; }
+.winner-detail { color:rgba(253,246,227,0.55); font-style:italic; margin-top:6px; font-size:0.9rem; }
+.winner-reveal { margin-top:18px; display:flex; flex-direction:column; gap:10px; align-items:center; }
+.winner-reveal-title { font-family:'Cinzel',serif; font-size:0.62rem; color:rgba(201,168,76,0.75); letter-spacing:0.18em; text-transform:uppercase; }
+.winner-cards { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; max-width:520px; }
+.winner-card-sep { color:rgba(201,168,76,0.65); font-family:'Cinzel',serif; font-size:1rem; padding:0 2px; }
+.winner-combos { margin-top:8px; max-width:560px; color:rgba(253,246,227,0.72); font-size:0.82rem; line-height:1.45; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.25); border-radius:2px; }
+
+/* Draw section divider */
+.section-divider {
+  font-family: 'Cinzel', serif;
+  font-size: 0.5rem;
+  color: rgba(201,168,76,0.3);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-top: 1px solid rgba(201,168,76,0.08);
+  margin-top: 2px;
+}
+
+/* Empty state */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: rgba(201,168,76,0.25);
+  font-family: 'Cinzel', serif;
+  letter-spacing: 0.3em;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+  .main { grid-template-columns: 1fr; }
+  .sidebar { max-height: 220px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">
+    <h1>🎴 CEKI</h1>
+    <p>Traditional Balinese Card Game Simulator v11</p>
+  </div>
+</div>
+
+<div class="controls-bar">
+  <button class="btn primary" id="btnNew" onclick="newGame()">⊕ New Game</button>
+  <button class="btn" id="btnStep" onclick="stepGame()" disabled>▶ Next Turn</button>
+  <button class="btn" id="btnAuto" onclick="toggleAuto()" disabled>⏵ Auto Play</button>
+  <button class="btn" id="btnFast" onclick="fastForward()" disabled>⏩ Fast Forward</button>
+  <button class="btn export" id="btnExport" onclick="exportLog()" disabled>↓ Export Log</button>
+  <div class="speed-wrap">
+    <span>Speed:</span>
+    <input type="range" id="speedRange" min="150" max="2000" value="700" step="50">
+    <span id="speedLabel">700ms</span>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="stat"><span class="stat-label">Round</span><span class="stat-value" id="statRound">—</span></div>
+  <div class="stat"><span class="stat-label">Turn</span><span class="stat-value" id="statTurn">—</span></div>
+  <div class="stat"><span class="stat-label">Draw Pile</span><span class="stat-value" id="statDraw">—</span></div>
+  <div class="stat"><span class="stat-label">Active</span><span class="stat-value" id="statActive">—</span></div>
+  <div class="stat"><span class="stat-label">Phase</span><span class="stat-value" id="statPhase">—</span></div>
+  <div class="stat"><span class="stat-label">Gantung</span><span class="stat-value gantung" id="statGantung">—</span></div>
+</div>
+
+<div class="main">
+  <div class="game-area" id="gameArea">
+    <div class="empty-state">PRESS NEW GAME TO START</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>Game Log</span>
+      <button class="btn" style="padding:2px 7px;font-size:0.5rem;" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log" id="gameLog"></div>
+    <div class="sidebar-legend">
+      <div class="leg"><div class="leg-dot" style="background:var(--soca-color)"></div>Soca</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--patuh-color)"></div>Patuh Dua</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--srigat-color)"></div>Srigat</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--open-color)"></div>Open</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--locked-color)"></div>Locked</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--gantung-color)"></div>Gantung</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--leftover-color)"></div>Leftover</div>
+      <div class="leg"><div class="leg-dot" style="background:#f0c840;border-radius:2px;"></div>Dead Open→Hand</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--soca-color);border-radius:2px;"></div>Soca Open→Hand</div>
+    </div>
+  </div>
+</div>
+
+<div class="winner-overlay" id="winnerOverlay">
+  <div class="winner-box">
+    <div class="winner-ceki">CEKI!</div>
+    <div class="winner-name" id="winnerName"></div>
+    <div class="winner-detail" id="winnerDetail"></div>
+    <div class="winner-reveal">
+      <div class="winner-reveal-title">Locked Pile + Winning Card</div>
+      <div class="winner-cards" id="winnerCards"></div>
+      <div class="winner-combos" id="winnerCombos"></div>
+    </div>
+  </div>
+  <div class="winner-actions" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
+    <button class="btn" onclick="closeWinnerOverlay()">✕ Close</button>
+    <button class="btn primary" onclick="newGame()">⊕ New Game</button>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// CARD DATA
+// ================================================================
+const CARDS_DEF = [
+  { id:'WR',  name:'Wong Raja',  type:'honours', value:0 },
+  { id:'CN',  name:'Cina',       type:'honours', value:0 },
+  { id:'KN',  name:'Kunci',      type:'honours', value:0 },
+  { id:'LK',  name:'Likas',      type:'coins',   value:1 },
+  { id:'JD',  name:'Jebug Dua',  type:'coins',   value:2 },
+  { id:'JT',  name:'Jebug Telu', type:'coins',   value:3 },
+  { id:'PY',  name:'Piyag',      type:'coins',   value:4 },
+  { id:'PA',  name:'Pau',        type:'coins',   value:5 },
+  { id:'PN',  name:'Pis Nem',    type:'coins',   value:6 },
+  { id:'PT',  name:'Pis Tu',     type:'coins',   value:7 },
+  { id:'PTS', name:'Pis Tus',    type:'coins',   value:8 },
+  { id:'SG',  name:'Sanga',      type:'coins',   value:9 },
+  { id:'LJ',  name:'Lojor',      type:'strings', value:1 },
+  { id:'SK',  name:'Sengkek',    type:'strings', value:2 },
+  { id:'GN',  name:'Gunung',     type:'strings', value:3 },
+  { id:'BB',  name:'Bebed',      type:'strings', value:4 },
+  { id:'PL',  name:'Palu',       type:'strings', value:5 },
+  { id:'KL',  name:'Klenteng',   type:'strings', value:6 },
+  { id:'RY',  name:'Rinying',    type:'strings', value:7 },
+  { id:'UL',  name:'Ulu',        type:'strings', value:8 },
+  { id:'BS',  name:'Besar',      type:'strings', value:9 },
+  { id:'CK',  name:'Cakra',       type:'myriads', value:1 },
+  { id:'PK',  name:'Pelik',      type:'myriads', value:2 },
+  { id:'CL',  name:'Caling',     type:'myriads', value:3 },
+  { id:'KB',  name:'Kobong',     type:'myriads', value:4 },
+  { id:'BK',  name:'Bongkar',    type:'myriads', value:5 },
+  { id:'BR',  name:'Burat',      type:'myriads', value:6 },
+  { id:'RG',  name:'Ringgit',    type:'myriads', value:7 },
+  { id:'MN',  name:'Manak',      type:'myriads', value:8 },
+  { id:'SM',  name:'Semi',       type:'myriads', value:9 },
+];
+
+
+// ================================================================
+// CARD IMAGES — GitHub Pages
+// ================================================================
+const CARD_IMAGES = {
+  'WR':  'https://nananomad.github.io/ceki-bali/images/honour1.jpeg',
+  'CN':  'https://nananomad.github.io/ceki-bali/images/honour2.jpeg',
+  'KN':  'https://nananomad.github.io/ceki-bali/images/honour3.jpeg',
+  'LK':  'https://nananomad.github.io/ceki-bali/images/coins1.jpeg',
+  'JD':  'https://nananomad.github.io/ceki-bali/images/coins2.jpeg',
+  'JT':  'https://nananomad.github.io/ceki-bali/images/coins3.jpeg',
+  'PY':  'https://nananomad.github.io/ceki-bali/images/coins4.jpeg',
+  'PA':  'https://nananomad.github.io/ceki-bali/images/coins5.jpeg',
+  'PN':  'https://nananomad.github.io/ceki-bali/images/coins6.jpeg',
+  'PT':  'https://nananomad.github.io/ceki-bali/images/coins7.jpeg',
+  'PTS': 'https://nananomad.github.io/ceki-bali/images/coins8.jpeg',
+  'SG':  'https://nananomad.github.io/ceki-bali/images/coins9.jpeg',
+  'LJ':  'https://nananomad.github.io/ceki-bali/images/string1.jpeg',
+  'SK':  'https://nananomad.github.io/ceki-bali/images/strings2.jpeg',
+  'GN':  'https://nananomad.github.io/ceki-bali/images/strings3.jpeg',
+  'BB':  'https://nananomad.github.io/ceki-bali/images/strings4.jpeg',
+  'PL':  'https://nananomad.github.io/ceki-bali/images/strings5.jpeg',
+  'KL':  'https://nananomad.github.io/ceki-bali/images/strings6.jpeg',
+  'RY':  'https://nananomad.github.io/ceki-bali/images/strings7.jpeg',
+  'UL':  'https://nananomad.github.io/ceki-bali/images/strings8.jpeg',
+  'BS':  'https://nananomad.github.io/ceki-bali/images/strings9.jpeg',
+  'CK':  'https://nananomad.github.io/ceki-bali/images/myriads1.jpeg',
+  'PK':  'https://nananomad.github.io/ceki-bali/images/myriads2.jpeg',
+  'CL':  'https://nananomad.github.io/ceki-bali/images/myriads3.jpeg',
+  'KB':  'https://nananomad.github.io/ceki-bali/images/myriads4.jpeg',
+  'BK':  'https://nananomad.github.io/ceki-bali/images/myriads5.jpeg',
+  'BR':  'https://nananomad.github.io/ceki-bali/images/myriads6.jpeg',
+  'RG':  'https://nananomad.github.io/ceki-bali/images/myriads7.jpeg',
+  'MN':  'https://nananomad.github.io/ceki-bali/images/myriads8.jpeg',
+  'SM':  'https://nananomad.github.io/ceki-bali/images/myriads9.jpeg',
+};
+
+// ================================================================
+// GAME STATE
+// ================================================================
+let G = null;
+let autoTimer = null;
+let isAutoPlaying = false;
+let fullLog = []; // For export
+
+function buildDeck() {
+  let deck = [];
+  for (let c of CARDS_DEF)
+    for (let i = 0; i < 4; i++) deck.push({...c, uid: c.id+'_'+i});
+  return deck;
+}
+
+function riffleShuffle(deck) {
+  let d = [...deck];
+  for (let r = 0; r < 8; r++) {
+    const mid = Math.floor(d.length/2) + Math.floor(Math.random()*6) - 3;
+    const left = d.slice(0, mid), right = d.slice(mid);
+    let result = [], i = 0, j = 0;
+    while (i < left.length || j < right.length) {
+      const prob = (left.length-i) / ((left.length-i)+(right.length-j)+0.001);
+      if (j >= right.length || (i < left.length && Math.random() < prob+0.1)) {
+        const drop = Math.min(Math.floor(Math.random()*3)+1, left.length-i);
+        for (let k=0;k<drop;k++) result.push(left[i++]);
+      } else {
+        const drop = Math.min(Math.floor(Math.random()*3)+1, right.length-j);
+        for (let k=0;k<drop;k++) result.push(right[j++]);
+      }
+    }
+    d = result;
+  }
+  return d;
+}
+
+// ================================================================
+// COMBINATION ENGINE
+// ================================================================
+function findBestCombo(cards) {
+  const comboWeight = { soca:100, patuh:50, srigat:20 };
+
+  if (!cards?.length) {
+    return {
+      combos: [],
+      leftover: [],
+      score: 0,
+      socaCount: 0,
+      patuhCount: 0,
+      srigatCount: 0,
+    };
+  }
+
+  const indexed = cards.map((card, index) => ({ ...card, _idx:index }));
+  const combos = [];
+  const seenMasks = new Set();
+
+  function addCombo(type, selectedCards) {
+    const sorted = [...selectedCards].sort((a,b)=>a._idx-b._idx);
+    const mask = sorted.reduce((m,c)=>m | (1 << c._idx), 0);
+    if (seenMasks.has(mask)) return;
+    seenMasks.add(mask);
+    combos.push({
+      type,
+      mask,
+      cards: sorted.map(c => ({ ...c })),
+    });
+  }
+
+  const byId = {};
+  const byValue = {};
+  for (const card of indexed) {
+    if (!byId[card.id]) byId[card.id] = [];
+    byId[card.id].push(card);
+
+    const valueKey = `${card.type}:${card.value}`;
+    if (!byValue[valueKey]) byValue[valueKey] = [];
+    byValue[valueKey].push(card);
+  }
+
+  function chooseK(arr, k, start = 0, picked = [], out = []) {
+    if (picked.length === k) {
+      out.push([...picked]);
+      return out;
+    }
+    for (let i = start; i <= arr.length - (k - picked.length); i++) {
+      picked.push(arr[i]);
+      chooseK(arr, k, i + 1, picked, out);
+      picked.pop();
+    }
+    return out;
+  }
+
+  // Soca: 3 kartu identik
+  for (const arr of Object.values(byId)) {
+    if (arr.length >= 3) {
+      for (const selected of chooseK(arr, 3)) addCombo('soca', selected);
+    }
+  }
+
+  // Honours Srigat: WR + CK + KN
+  const honoursIds = ['WR','CN','KN'];
+  const honoursSets = honoursIds.map(id => byId[id] || []);
+  if (honoursSets.every(set => set.length > 0)) {
+    for (const wr of honoursSets[0]) {
+      for (const ck of honoursSets[1]) {
+        for (const kn of honoursSets[2]) {
+          addCombo('srigat', [wr, ck, kn]);
+        }
+      }
+    }
+  }
+
+  // Honours Patuh: dua honours identik + satu honours lain
+  const honourCards = indexed.filter(c => c.type === 'honours');
+  for (const arr of Object.values(byId)) {
+    if (arr[0]?.type !== 'honours' || arr.length < 2) continue;
+    const others = honourCards.filter(c => c.id !== arr[0].id);
+    if (!others.length) continue;
+    for (const pair of chooseK(arr, 2)) {
+      for (const other of others) addCombo('patuh', [...pair, other]);
+    }
+  }
+
+  // Srigat by value: tiga suit berbeda, value sama (non-honours)
+  const numericValues = [...new Set(indexed.filter(c => c.type !== 'honours').map(c => c.value))];
+  for (const value of numericValues) {
+    const suitBuckets = {
+      coins: indexed.filter(c => c.type === 'coins' && c.value === value),
+      strings: indexed.filter(c => c.type === 'strings' && c.value === value),
+      myriads: indexed.filter(c => c.type === 'myriads' && c.value === value),
+    };
+    if (suitBuckets.coins.length && suitBuckets.strings.length && suitBuckets.myriads.length) {
+      for (const c1 of suitBuckets.coins) {
+        for (const c2 of suitBuckets.strings) {
+          for (const c3 of suitBuckets.myriads) {
+            addCombo('srigat', [c1, c2, c3]);
+          }
+        }
+      }
+    }
+  }
+
+  // Patuh by value: dua kartu identik + satu kartu lain dengan value sama (non-honours)
+  for (const arr of Object.values(byId)) {
+    if (arr[0]?.type === 'honours' || arr.length < 2) continue;
+    const value = arr[0].value;
+    const others = indexed.filter(c => c.type !== 'honours' && c.value === value && c.id !== arr[0].id);
+    if (!others.length) continue;
+    for (const pair of chooseK(arr, 2)) {
+      for (const other of others) addCombo('patuh', [...pair, other]);
+    }
+  }
+
+  function evaluate(mask) {
+    let leftoverCount = 0;
+    const leftover = [];
+    for (let i = 0; i < indexed.length; i++) {
+      if ((mask & (1 << i)) === 0) {
+        leftoverCount++;
+        leftover.push(cards[i]);
+      }
+    }
+
+    return {
+      mask,
+      combos: [],
+      leftover,
+      leftoverCount,
+      socaCount: 0,
+      patuhCount: 0,
+      srigatCount: 0,
+      score: -leftoverCount * 10,
+    };
+  }
+
+  function betterThan(a, b) {
+    if (!b) return true;
+    if (a.score !== b.score) return a.score > b.score;
+    if (a.leftoverCount !== b.leftoverCount) return a.leftoverCount < b.leftoverCount;
+    if (a.socaCount !== b.socaCount) return a.socaCount > b.socaCount;
+    if (a.patuhCount !== b.patuhCount) return a.patuhCount > b.patuhCount;
+    if (a.srigatCount !== b.srigatCount) return a.srigatCount > b.srigatCount;
+
+    const aTypes = a.combos.map(c=>c.type).join('|');
+    const bTypes = b.combos.map(c=>c.type).join('|');
+    if (aTypes !== bTypes) return aTypes > bTypes;
+
+    const aSig = a.leftover.map(c=>c.uid || c.id).join('|');
+    const bSig = b.leftover.map(c=>c.uid || c.id).join('|');
+    return aSig < bSig;
+  }
+
+  const memo = new Map();
+  function dfs(mask) {
+    if (memo.has(mask)) return memo.get(mask);
+
+    let best = evaluate(mask);
+
+    for (const combo of combos) {
+      if ((mask & combo.mask) !== 0) continue;
+      const next = dfs(mask | combo.mask);
+      const candidate = {
+        ...next,
+        combos: [
+          { type: combo.type, cards: combo.cards.map(c => ({ ...cards[c._idx] })) },
+          ...next.combos,
+        ],
+        score: next.score + comboWeight[combo.type],
+        socaCount: next.socaCount + (combo.type === 'soca' ? 1 : 0),
+        patuhCount: next.patuhCount + (combo.type === 'patuh' ? 1 : 0),
+        srigatCount: next.srigatCount + (combo.type === 'srigat' ? 1 : 0),
+      };
+
+      if (betterThan(candidate, best)) best = candidate;
+    }
+
+    memo.set(mask, best);
+    return best;
+  }
+
+  const best = dfs(0);
+  best.combos = [...best.combos].sort((a, b) => comboWeight[b.type] - comboWeight[a.type]);
+  return best;
+}
+
+function checkPhase(player) {
+  const allCards = [...player.hand, ...player.openPile];
+  const result = findBestCombo(allCards);
+  const { socaCount, leftover } = result;
+
+  if (leftover.length !== 2) return null;
+  const [c1, c2] = leftover;
+
+  // MEJAGA: 2+ Soca, leftover 2 cards same id OR same value (non-honours)
+  if (socaCount >= 2) {
+    const sameId  = c1.id === c2.id;
+    const sameVal = c1.type !== 'honours' && c2.type !== 'honours' && c1.value === c2.value;
+    if (sameId || sameVal)
+      return { phase:'mejaga', lockedCards:leftover, combos:result.combos };
+  }
+
+  // MECARI: 1+ Soca, leftover 2 identical cards (same id)
+  if (socaCount >= 1 && c1.id === c2.id)
+    return { phase:'mecari', lockedCards:leftover, combos:result.combos };
+
+  return null;
+}
+
+function resolveWinningSpec(player) {
+  if (!player || !player.phase || player.phase === 'none') return null;
+  if (!Array.isArray(player.lockedCards) || player.lockedCards.length !== 2) return null;
+
+  const [c1, c2] = player.lockedCards;
+  if (!c1 || !c2) return null;
+
+  const sameId = c1.id === c2.id;
+  const sameNonHonourValue = c1.type !== 'honours' && c2.type !== 'honours' && c1.value === c2.value;
+
+  if (player.phase === 'mecari') {
+    if (!sameId) return null;
+    return {
+      mode: 'same-id',
+      id: c1.id,
+      label: c1.name,
+      description: `Need identical card: ${c1.name}`
+    };
+  }
+
+  if (player.phase === 'mejaga') {
+    if (sameId) {
+      return {
+        mode: 'same-id',
+        id: c1.id,
+        label: c1.name,
+        description: `Need identical card: ${c1.name}`
+      };
+    }
+
+    if (sameNonHonourValue) {
+      return {
+        mode: 'same-value-non-honours',
+        value: c1.value,
+        label: `Value ${c1.value}`,
+        description: `Need non-honours value ${c1.value}`
+      };
+    }
+
+    return null;
+  }
+
+  return null;
+}
+
+function checkWin(card, player) {
+  const spec = resolveWinningSpec(player);
+  if (!spec || !card) return false;
+
+  if (spec.mode === 'same-id') {
+    return card.id === spec.id;
+  }
+
+  if (spec.mode === 'same-value-non-honours') {
+    return card.type !== 'honours' && card.value === spec.value;
+  }
+
+  return false;
+}
+
+// ================================================================
+// GANTUNG / PUBLIC INFORMATION
+// ================================================================
+function countPublicIdentical(cardId) {
+  if (!G) return 0;
+  return G.players.reduce((n, p) => {
+    const discardCount = p.discardPile.filter(c => c.id === cardId).length;
+    const openCount = p.openPile.filter(c => c.id === cardId).length;
+    return n + discardCount + openCount;
+  }, 0);
+}
+
+function isDeadForSoca(card) {
+  return countPublicIdentical(card.id) >= 3;
+}
+
+function getCardPotential(card, player) {
+  const sameIdPrivate = player.hand.filter(c => c.id === card.id && c.uid !== card.uid).length;
+  const sameValueCards = [...player.hand, ...player.openPile].filter(c =>
+    c.uid !== card.uid &&
+    c.type !== 'honours' &&
+    card.type !== 'honours' &&
+    c.value === card.value
+  ).length;
+
+  return {
+    deadForSoca: isDeadForSoca(card),
+    usefulForPatuh: sameIdPrivate > 0 || sameValueCards > 0,
+    usefulForSrigat: sameValueCards > 0
+  };
+}
+
+function isCardGantung(card, playerIdx) {
+  if (!G) return false;
+  return G.players[(playerIdx+1)%5].openPile.some(c=>c.id===card.id);
+}
+
+function getGantungIds(playerIdx) {
+  if (!G) return new Set();
+  return new Set(G.players[(playerIdx+1)%5].openPile.map(c=>c.id));
+}
+
+function canDiscard(card, playerIdx, enteringPhase=false) {
+  // Exception 1: entering MECARI/MEJAGA — can discard anything
+  if (enteringPhase) return true;
+  // Exception 2: Player already in MECARI/MEJAGA — no GANTUNG restriction
+  if (G && G.players[playerIdx] && G.players[playerIdx].phase !== 'none') return true;
+  // Exception 3: Kartu Mati — can discard even if gantung
+  if (isDeadForSoca(card)) return true;
+  // Normal rule: cannot discard if gantung
+  return !isCardGantung(card, playerIdx);
+}
+
+// ================================================================
+// AI
+// ================================================================
+// ── SRIGAT-TRIGGERS-PHASE DETECTOR ──
+// Cek apakah kartu X jika ditambahkan ke hand bisa:
+// 1. Melengkapi Srigat (dengan 2 kartu loose/patuh ekor)
+// 2. Yang membebaskan pasangan identik dari Patuh Dua
+// 3. Sehingga pasangan identik itu jadi Locked → MECARI/MEJAGA
+//
+// Ini strategi tingkat tinggi: reorganisasi Patuh→Srigat untuk buka MECARI
+function wouldSrigatTriggerPhase(player, candidateCard) {
+  if (!candidateCard || candidateCard.type === 'honours') return false;
+
+  const allCards = [...player.hand, ...player.openPile, candidateCard];
+  if (allCards.length !== 12) return false; // belum discard
+
+  // Simulasikan setiap kemungkinan discard dari hand
+  // Cek apakah setelah discard, terbentuk MECARI/MEJAGA
+  for (const discardCandidate of player.hand) {
+    if (!canDiscard(discardCandidate, player.id, false)) continue;
+    const simCards = allCards.filter(c => c.uid !== discardCandidate.uid);
+    if (simCards.length === 11 && wouldEnterPhase(simCards)) {
+      // Verifikasi bahwa candidateCard berkontribusi pada Srigat
+      const resultWith = findBestCombo(simCards);
+      const resultWithout = findBestCombo(simCards.filter(c => c.uid !== candidateCard.uid));
+      // Jika srigatCount bertambah setelah kandidat masuk → dia yang trigger
+      if ((resultWith.srigatCount || 0) > (resultWithout.srigatCount || 0)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+function wouldEnterPhase(cards) {
+  if (cards.length !== 11) return false;
+  const result = findBestCombo(cards);
+  if (result.leftover.length !== 2) return false;
+  const [c1,c2] = result.leftover;
+  if (result.socaCount >= 2) {
+    if (c1.id===c2.id) return true;
+    if (c1.type!=='honours' && c2.type!=='honours' && c1.value===c2.value) return true;
+  }
+  if (result.socaCount >= 1 && c1.id===c2.id) return true;
+  return false;
+}
+
+function getComboUidsFromResult(result) {
+  const uids = new Set();
+  result.combos.forEach(combo => combo.cards.forEach(c => uids.add(c.uid)));
+  return uids;
+}
+
+function getProtectedHandUids(player, handCards) {
+  const protectedUids = new Set();
+  const openById = {};
+  player.openPile.forEach(c => {
+    if (!openById[c.id]) openById[c.id] = [];
+    openById[c.id].push(c);
+  });
+
+  handCards.forEach(card => {
+    const sameInHand = handCards.filter(c => c.id === card.id).length;
+    const sameInOpen = (openById[card.id] || []).length;
+
+    // Protect if this hand card is strongly tied to an open-pile Soca route
+    if ((sameInOpen >= 1 && sameInHand >= 2) || (sameInOpen >= 2 && sameInHand >= 1)) {
+      protectedUids.add(card.uid);
+    }
+  });
+
+  return protectedUids;
+}
+
+function evaluateCombinedShape(cards) {
+  const result = findBestCombo(cards);
+  let score = result.score;
+  score += result.socaCount * 32;
+  score += (result.patuhCount || 0) * 16;
+  score += (result.srigatCount || 0) * 10;
+  score -= result.leftover.length * 14;
+
+  if (cards.length === 11 && wouldEnterPhase(cards)) score += 420;
+
+  return { result, score };
+}
+
+function countSameId(cards, card) {
+  return cards.filter(c => c.id === card.id && c.uid !== card.uid).length;
+}
+
+function countSameValueNonHonours(cards, card) {
+  if (card.type === 'honours') return 0;
+  return cards.filter(c =>
+    c.uid !== card.uid &&
+    c.type !== 'honours' &&
+    c.value === card.value
+  ).length;
+}
+
+// ── W19 FIX: Soca Opportunity dari Open Pile ──
+// Cek apakah setelah membuang kartu X, openPile card bisa membentuk Soca
+// dengan 2 kartu identik yang tersisa di hand
+// Ini memungkinkan AI "memecah" Patuh/Srigat demi peluang Soca yang lebih baik
+function scoreSocaOpportunityFromOpen(simulatedHandCards, openPile) {
+  let bonus = 0;
+  for (const openCard of openPile) {
+    const sameInSimHand = simulatedHandCards.filter(c => c.id === openCard.id).length;
+    if (sameInSimHand >= 2) {
+      // Setelah discard, openCard bisa form Soca dengan 2 di hand
+      bonus += 350; // bonus besar — Soca adalah target utama
+    } else if (sameInSimHand === 1) {
+      // Satu langkah lagi dari Soca — ada 1 di hand + 1 di open
+      bonus += 60;
+    }
+  }
+  return bonus;
+}
+
+function evaluateDiscardCandidate(card, player, handCards, openPile, enteringPhase=false) {
+  const pidx = player.id;
+  if (!canDiscard(card, pidx, enteringPhase)) {
+    return { total: -Infinity, candidate: card, simulatedCards: [], shape: null };
+  }
+
+  const combinedBefore = [...handCards, ...openPile];
+  const protectedUids = getProtectedHandUids(player, handCards);
+  const simulatedCards = [...combinedBefore].filter(c => c.uid !== card.uid);
+  const simulatedHandOnly = handCards.filter(c => c.uid !== card.uid);
+  const shape = evaluateCombinedShape(simulatedCards);
+  let total = shape.score;
+
+  const comboUids = getComboUidsFromResult(shape.result);
+  const sameIdPrivate = countSameId(handCards, card);
+  const sameValuePartners = countSameValueNonHonours(simulatedCards, card);
+
+  // Strong bonus if discarding this card enters phase
+  if (simulatedCards.length === 11 && wouldEnterPhase(simulatedCards)) total += 700;
+
+  // W19 FIX: bonus jika discard membuka peluang Soca dari openPile
+  const socaOpenBonus = scoreSocaOpportunityFromOpen(simulatedHandOnly, openPile);
+  total += socaOpenBonus;
+
+  // SRIGAT→PHASE FIX: bonus besar jika discard ini memungkinkan Srigat trigger MECARI
+  // Mendorong AI rela pecah Patuh Dua demi masuk fase
+  if (simulatedCards.length === 11) {
+    const simResult = findBestCombo(simulatedCards);
+    const simWithoutCandidate = simulatedCards.filter(c => c.uid !== card.uid);
+    const simResultWithout = simWithoutCandidate.length > 0 ? findBestCombo(simWithoutCandidate) : null;
+    const srigatAdded = simResultWithout
+      ? (simResult.srigatCount || 0) > (simResultWithout.srigatCount || 0)
+      : false;
+    if (srigatAdded && wouldEnterPhase(simulatedCards)) {
+      total += 600; // Srigat yang trigger fase = sangat berharga
+    }
+  }
+
+  // Keep cards that are strategically anchored
+  if (protectedUids.has(card.uid)) total -= 180;
+  if (comboUids.has(card.uid)) total -= 120;
+
+  // Dead for Soca is only a mild discard preference
+  if (isDeadForSoca(card)) total += 22;
+
+  // Preserve same-id and same-value structure where possible
+  if (sameIdPrivate > 0) total -= 75;
+  if (sameIdPrivate >= 2) total -= 35;
+  if (sameValuePartners > 0) total -= 46;
+  if (sameValuePartners >= 2) total -= 18;
+
+  // Honour singles are usually easier to release
+  if (card.type === 'honours') {
+    total += sameIdPrivate === 0 ? 26 : 6;
+  }
+
+  // Slight preference to release isolated leftovers
+  const inCurrentBestCombo = getComboUidsFromResult(findBestCombo(combinedBefore)).has(card.uid);
+  if (!inCurrentBestCombo) total += 18;
+
+  return { total, candidate: card, simulatedCards, shape };
+}
+
+function pickBestDiscardEvaluation(player, handCards, openPile, enteringPhase=false) {
+  const evaluations = handCards.map(card =>
+    evaluateDiscardCandidate(card, player, handCards, openPile, enteringPhase)
+  ).filter(e => Number.isFinite(e.total));
+
+  if (!evaluations.length) return null;
+
+  evaluations.sort((a, b) => {
+    if (a.total !== b.total) return b.total - a.total;
+
+    // Tie-break: prefer discarding weaker support cards
+    const aSameId = countSameId(handCards, a.candidate);
+    const bSameId = countSameId(handCards, b.candidate);
+    if (aSameId !== bSameId) return aSameId - bSameId;
+
+    const aSameVal = countSameValueNonHonours([...handCards, ...openPile], a.candidate);
+    const bSameVal = countSameValueNonHonours([...handCards, ...openPile], b.candidate);
+    if (aSameVal !== bSameVal) return aSameVal - bSameVal;
+
+    return a.candidate.name.localeCompare(b.candidate.name);
+  });
+
+  return evaluations[0];
+}
+
+function aiDecide(player, topDiscard) {
+  if (!topDiscard) return { takeDiscard:false, reason:'no-discard' };
+  if (player.phase !== 'none') return { takeDiscard:false, reason:'already-in-phase' };
+
+  const baseCards = [...player.hand, ...player.openPile];
+
+  // ── SOCA FORMATION CHECKS (highest priority) ──
+
+  // Skenario 1: sudah punya Soca dari hand+openPile → ABAIKAN topDiscard yang sama
+  // Hand x2 + OpenPile x1 = Soca sudah terbentuk → topDiscard tidak berguna
+  const alreadyHasSocaWithOpen = player.openPile.some(openCard =>
+    openCard.id === topDiscard.id &&
+    player.hand.filter(c => c.id === openCard.id).length >= 2
+  );
+  if (alreadyHasSocaWithOpen) {
+    return { takeDiscard:false, reason:'soca-already-complete' };
+  }
+
+  // Skenario 2: Hand x2 + topDiscard = Soca Formation via openPile
+  // Ambil topDiscard → masuk openPile → STEP 2b trigger Soca Formation
+  const handCount = player.hand.filter(c => c.id === topDiscard.id).length;
+  if (handCount >= 2) {
+    return { takeDiscard:true, reason:'soca-formation-trigger' };
+  }
+
+  // Skenario 3: Hand x1 + OpenPile x1 + topDiscard = Soca Formation
+  // Tiga sumber identik terkumpul → Soca!
+  const openCount = player.openPile.filter(c => c.id === topDiscard.id).length;
+  if (handCount >= 1 && openCount >= 1) {
+    return { takeDiscard:true, reason:'soca-formation-three-source' };
+  }
+
+  // ── SRIGAT → MECARI/MEJAGA TRIGGER ──
+  // Skenario: draw topDiscard bisa lengkapi Srigat → bebas pasangan identik → MECARI
+  // Ini strategi tingkat tinggi: reorganisasi Patuh Dua menjadi Srigat + Locked
+  if (wouldSrigatTriggerPhase(player, topDiscard)) {
+    return { takeDiscard:true, reason:'srigat-triggers-phase' };
+  }
+
+  // ── STANDARD EVALUATION ──
+  const baseline = evaluateCombinedShape(baseCards);
+
+  const takeEval = pickBestDiscardEvaluation(
+    player,
+    [...player.hand],
+    [...player.openPile, topDiscard],
+    false
+  );
+
+  if (!takeEval) return { takeDiscard:false, reason:'no-legal-followup' };
+
+  const sameIdSupport = countSameId(baseCards, topDiscard);
+  const sameValueSupport = countSameValueNonHonours(baseCards, topDiscard);
+  const wouldPhase = takeEval.simulatedCards.length === 11 && wouldEnterPhase(takeEval.simulatedCards);
+
+  let takeScore = takeEval.total;
+  if (sameIdSupport >= 2) takeScore += 160;
+  else if (sameIdSupport >= 1) takeScore += 70;
+
+  if (sameValueSupport >= 2) takeScore += 55;
+  else if (sameValueSupport >= 1) takeScore += 24;
+
+  if (topDiscard.type === 'honours' && baseCards.filter(c => c.type === 'honours').length >= 2) {
+    takeScore += 28;
+  }
+
+  if (wouldPhase) takeScore += 220;
+
+  const delta = takeScore - baseline.score;
+
+  if (wouldPhase) return { takeDiscard:true, reason:'phase-entry', score:takeScore, delta };
+  if (sameIdSupport >= 2 && delta >= 15) return { takeDiscard:true, reason:'same-id-pressure', score:takeScore, delta };
+  if (delta >= 55) return { takeDiscard:true, reason:'shape-upgrade', score:takeScore, delta };
+
+  return { takeDiscard:false, reason:'draw-preferred', score:takeScore, delta };
+}
+
+function aiChooseDiscard(player, enteringPhase=false, excludeUid=null) {
+  const handCards = player.hand.filter(c => c.uid !== excludeUid);
+  if (!handCards.length) return null;
+
+  const evaluation = pickBestDiscardEvaluation(player, handCards, player.openPile, enteringPhase);
+  if (evaluation) return evaluation.candidate;
+
+  // Fallback: first legal discard, else first card
+  return handCards.find(c => canDiscard(c, player.id, enteringPhase)) || handCards[0];
+}
+
+// ================================================================
+// GAME LOGIC
+// ================================================================
+function newGame() {
+  stopAuto();
+  document.getElementById('winnerOverlay').classList.remove('show');
+  fullLog = [];
+
+  let deck = riffleShuffle(buildDeck());
+  const players = Array.from({length:5},(_,i)=>({
+    id:i, name:'Player '+(i+1),
+    hand:[], openPile:[], discardPile:[],
+    phase:'none', lockedCards:[], combos:[],
+  }));
+
+  const dealOrder = [0,4,3,2,1];
+  let idx = 0;
+  for (let r=0;r<11;r++) for (let pi of dealOrder) players[pi].hand.push(deck[idx++]);
+
+  G = { players, drawPile:deck.slice(idx), round:1, turn:1, activePlayer:0, phase:'playing', winner:null, startPlayer:0 };
+  for (let p of G.players) p.combos = findBestCombo(p.hand).combos;
+
+  addLog('=== GAME STARTED ===','round');
+  addLog(`Riffle Shuffle x8 — 120 cards dealt`,'normal');
+  addLog(`Draw pile: ${G.drawPile.length} cards`,'draw');
+  addLog(`Round 1 — Player 1 starts`,'round');
+
+  ['btnStep','btnAuto','btnFast','btnExport'].forEach(id=>document.getElementById(id).disabled=false);
+  renderGame();
+}
+
+function stepGame() {
+  if (!G||G.phase==='ended') return;
+  processOneTurn();
+  renderGame();
+}
+
+function processOneTurn() {
+  const p = G.players[G.activePlayer];
+  const prevIdx = (G.activePlayer+4)%5;
+  const prevDiscard = G.players[prevIdx].discardPile;
+  const topDiscard = prevDiscard.length ? prevDiscard[prevDiscard.length-1] : null;
+
+  addLog(`— ${p.name} (R${G.round}/T${G.turn}) —`,'action');
+
+  let drawnCard = null, fromDiscard = false;
+
+  // ── STEP 1: DRAW ──
+  const dec = aiDecide(p, topDiscard);
+  if (dec.takeDiscard && topDiscard) {
+    drawnCard = prevDiscard.pop();
+    p.openPile.push(drawnCard);
+    fromDiscard = true;
+    addLog(`${p.name} takes ${drawnCard.name} from discard`,'action');
+  } else {
+    if (!G.drawPile.length) {
+      addLog('⚠ Draw pile empty — DRAW/SERI!','mecari');
+      G.phase='ended'; return;
+    }
+    drawnCard = G.drawPile.pop();
+    p.hand.push(drawnCard);
+    // hand is now 12 cards
+    addLog(`${p.name} draws ${drawnCard.name}`,'draw');
+
+    // Win check: own card (if already in phase)
+    if (p.phase !== 'none' && checkWin(drawnCard, p)) {
+      declareWinner(G.activePlayer, drawnCard); return;
+    }
+    // Win check: show to other phase players
+    checkDrawForPhase(drawnCard, G.activePlayer);
+    if (G.phase === 'ended') return;
+  }
+
+  // ── STEP 2: DISCARD (hand goes back to 11) ──
+  const doDiscard = (excludeUid) => {
+    const toDiscard = aiChooseDiscard(p, false, excludeUid);
+    if (!toDiscard) return;
+
+    if (!canDiscard(toDiscard, p.id, false)) {
+      // Kartu terpilih adalah GANTUNG — cari alternatif
+      addLog(`⚠ GANTUNG! ${p.name} cannot discard ${toDiscard.name}`, 'gantung');
+
+      // Cari kartu lain yang bisa dibuang (bukan gantung, bukan excludeUid)
+      const alt = p.hand.find(c =>
+        c.uid !== toDiscard.uid &&
+        (excludeUid ? c.uid !== excludeUid : true) &&
+        canDiscard(c, p.id, false)
+      );
+
+      if (alt) {
+        p.hand.splice(p.hand.findIndex(c=>c.uid===alt.uid), 1);
+        p.discardPile.push(alt);
+        addLog(`${p.name} discards ${alt.name} instead`, 'normal');
+      } else {
+        // Semua kartu di tangan adalah gantung — HARUS buang kartu gantung
+        // Per GDD: kartu gantung hanya bisa dibuang setelah menjadi Kartu Mati
+        // Jika semua gantung dan tidak ada yang mati, cari yang paling "aman" dibuang
+        // (least valuable gantung card — ini edge case yang sangat jarang)
+        const anyCard = p.hand.find(c => excludeUid ? c.uid !== excludeUid : true);
+        if (anyCard) {
+          p.hand.splice(p.hand.findIndex(c=>c.uid===anyCard.uid), 1);
+          p.discardPile.push(anyCard);
+          addLog(`⚠ GANTUNG PAKSA: ${p.name} forced to discard ${anyCard.name} (all cards gantung)`, 'gantung');
+        }
+        // Note: hand count must always return to 11 — no "hold" allowed
+      }
+    } else {
+      const hi = p.hand.findIndex(c=>c.uid===toDiscard.uid);
+      if (hi >= 0) p.hand.splice(hi, 1);
+      p.discardPile.push(toDiscard);
+      addLog(`${p.name} discards ${toDiscard.name}`, 'normal');
+    }
+  };
+
+  if (!fromDiscard) {
+    doDiscard(null);
+  } else {
+    doDiscard(drawnCard.uid); // cannot discard the card just taken from discard
+  }
+
+  // ── STEP 2b: Aksi Bebas — Open Pile → Hand (dua kondisi) ──
+  // Dilakukan SETELAH draw+discard, SEBELUM checkPhase. Tidak mengurangi turn.
+  //
+  // Kondisi 1: SOCA FORMATION
+  //   Hand punya 2 kartu identik + Open Pile punya 1 kartu identik = 3 = Soca
+  //   → Kartu Open Pile dipindah ke Hand, terkunci sebagai Soca
+  //   → Status GANTUNG pemain sebelumnya otomatis netral (Open Pile kosong)
+  //
+  // Kondisi 2: KARTU MATI
+  //   Kartu di Open Pile sudah menjadi Kartu Mati (3+ public identical)
+  //   → Dipindah ke Hand, bisa dibuang atau dipakai sebagai ekor
+  if (p.phase === 'none') {
+
+    // ── Kondisi 1: Soca Formation dari Open Pile ──
+    const socaFormed = [];
+    for (const openCard of [...p.openPile]) {
+      // Hitung kartu identik di Hand
+      const sameInHand = p.hand.filter(c => c.id === openCard.id);
+      if (sameInHand.length >= 2) {
+        // Soca terbentuk! Pindahkan kartu Open Pile ke Hand
+        const oi = p.openPile.findIndex(c => c.uid === openCard.uid);
+        if (oi >= 0) p.openPile.splice(oi, 1);
+        p.hand.push(openCard);
+        socaFormed.push(openCard);
+        addLog(`💎 ${p.name} completes SOCA: ${openCard.name} Open→Hand (free action)`, 'mecari');
+        addLog(`${p.name} GANTUNG for ${openCard.name} is now neutral`, 'normal');
+      }
+    }
+
+    // Kunci kartu Soca: tandai agar tidak dibuang oleh AI
+    // (checkPhase akan mendeteksi sebagai Soca dan masuk MECARI/MEJAGA)
+
+    // ── Kondisi 2: Kartu Mati di Open Pile → angkat ke Hand ──
+    // FIX Issue 1: proses satu per satu dari openPile langsung (bukan snapshot)
+    // untuk mencegah double-lift kartu yang sama UID
+    let liftIdx = 0;
+    while (liftIdx < p.openPile.length) {
+      const openCard = p.openPile[liftIdx];
+      if (isDeadForSoca(openCard)) {
+        // Angkat ke hand — splice dulu BARU push, tidak pakai index lama
+        p.openPile.splice(liftIdx, 1); // liftIdx tidak naik karena array bergeser
+        p.hand.push(openCard);
+        addLog(`${p.name} lifts dead card ${openCard.name} Open→Hand (free action)`, 'normal');
+        // Tidak increment liftIdx — posisi liftIdx sekarang adalah kartu berikutnya
+      } else {
+        liftIdx++; // kartu ini tidak diangkat, lanjut ke berikutnya
+      }
+    }
+
+    // ── Setelah lifting: jika total kartu > 11, buang excess ──
+    // Excess terjadi karena lift menambah kartu ke hand
+    // Prioritas buang: Kartu Mati yang tidak masuk kombinasi apapun
+    const totalCards = p.hand.length + p.openPile.length;
+    if (totalCards > 11) {
+      const excess = totalCards - 11;
+      for (let e = 0; e < excess; e++) {
+        const allCurrent = [...p.hand, ...p.openPile];
+        const currentResult = findBestCombo(allCurrent);
+        const comboUids = new Set();
+        currentResult.combos.forEach(combo => combo.cards.forEach(c => comboUids.add(c.uid)));
+
+        // Buang: Kartu Mati yang tidak masuk combo (bukan ekor)
+        const deadInHand = p.hand.filter(c =>
+          isDeadForSoca(c) &&
+          canDiscard(c, p.id, false) &&
+          !comboUids.has(c.uid)
+        );
+
+        const toDiscard = deadInHand[0] ||
+          p.hand.find(c => isDeadForSoca(c) && canDiscard(c, p.id, false)) ||
+          p.hand.find(c => canDiscard(c, p.id, false) && !comboUids.has(c.uid)) ||
+          p.hand.find(c => canDiscard(c, p.id, false));
+
+        if (toDiscard) {
+          p.hand.splice(p.hand.findIndex(c => c.uid === toDiscard.uid), 1);
+          p.discardPile.push(toDiscard);
+          addLog(`${p.name} discards ${toDiscard.name} (excess after lift)`, 'normal');
+        }
+      }
+    }
+  }
+
+  // ── STEP 3: CHECK PHASE (after discard, hand = 11 cards) ──
+  // KEY FIX: check AFTER discard so hand has exactly 11 cards
+  // 11 = 3+3+3+2 → leftover=2 → MECARI/MEJAGA possible!
+  if (p.phase === 'none') {
+    const pc = checkPhase(p);
+    if (pc) {
+      p.phase = pc.phase;
+      p.lockedCards = pc.lockedCards;
+      p.combos = pc.combos;
+      for (let lc of p.lockedCards) {
+        const hi = p.hand.findIndex(c=>c.uid===lc.uid); if(hi>=0) p.hand.splice(hi,1);
+        const oi = p.openPile.findIndex(c=>c.uid===lc.uid); if(oi>=0) p.openPile.splice(oi,1);
+      }
+      addLog(p.phase==='mecari'
+        ? `🔍 ${p.name} enters MECARI! Seeking: ${p.lockedCards[0].name}`
+        : `🛡 ${p.name} enters MEJAGA! Seeking val:${p.lockedCards[0].value}`,
+        p.phase);
+    }
+  }
+
+  p.combos = findBestCombo([...p.hand,...p.openPile]).combos;
+  advanceTurn();
+}
+
+function checkDrawForPhase(drawnCard, drawingIdx) {
+  // Guard: game may already be ended if drawing player won themselves
+  if (G.phase === 'ended') return;
+  const candidates = G.players.filter((_,i)=>i!==drawingIdx&&(G.players[i].phase==='mecari'||G.players[i].phase==='mejaga'));
+  const winners = candidates.filter(p=>checkWin(drawnCard,p));
+  if (!winners.length) return;
+  addLog(`${G.players[drawingIdx].name} reveals ${drawnCard.name}`,'normal');
+  if (winners.length===1) { declareWinner(winners[0].id,drawnCard); return; }
+
+  // Tiebreaker Step 1: MEJAGA menang atas MECARI (per GDD)
+  const mejagaWinners = winners.filter(p=>p.phase==='mejaga');
+  const mecariWinners = winners.filter(p=>p.phase==='mecari');
+  const finalCandidates = mejagaWinners.length > 0 ? mejagaWinners : mecariWinners;
+
+  if (finalCandidates.length === 1) {
+    addLog(`Tiebreaker: ${finalCandidates[0].name} wins (MEJAGA > MECARI)`,'mejaga');
+    declareWinner(finalCandidates[0].id, drawnCard);
+    return;
+  }
+
+  // Tiebreaker Step 2: pemain berikutnya dalam urutan giliran
+  let idx = (drawingIdx+1)%5;
+  for (let i=0;i<5;i++) {
+    if (finalCandidates.includes(G.players[idx])) {
+      addLog(`Tiebreaker: ${G.players[idx].name} wins (next in turn order)`,'mejaga');
+      declareWinner(G.players[idx].id, drawnCard);
+      return;
+    }
+    idx=(idx+1)%5;
+  }
+}
+
+
+function formatComboLabel(type) {
+  if (type === 'soca') return 'SOCA';
+  if (type === 'patuh') return 'PATUH';
+  if (type === 'srigat') return 'SRIGAT';
+  return type.toUpperCase();
+}
+
+function describeCombo(combo) {
+  if (!combo || !combo.cards || !combo.cards.length) return '';
+  if (combo.type === 'soca') return `${formatComboLabel(combo.type)}: ${combo.cards[0].name} 3x`;
+  return `${formatComboLabel(combo.type)}: ${combo.cards.map(c => c.name).join(', ')}`;
+}
+
+function buildWinnerReveal(player, winningCard) {
+  const finalCards = [...player.hand, ...player.openPile, ...(player.lockedCards || []), winningCard];
+  const analysis = findBestCombo(finalCards);
+  const lockedHtml = (player.lockedCards || []).map(c => renderCard(c, undefined, false)).join('');
+  const winningHtml = renderCard(winningCard, undefined, false);
+  const revealHtml = `${lockedHtml}<span class="winner-card-sep">+</span>${winningHtml}`;
+  const comboSummary = (analysis.combos || []).map(describeCombo).filter(Boolean).join(', ');
+  return { finalCards, analysis, revealHtml, comboSummary };
+}
+
+function declareWinner(playerIdx, card) {
+  const p = G.players[playerIdx];
+  G.phase='ended'; G.winner=playerIdx;
+  const label = p.phase==='mejaga'?'MEJAGA':'MECARI';
+  const reveal = buildWinnerReveal(p, card);
+  addLog(`🎉 CEKI! ${p.name} WINS! (${label})`,'ceki');
+  addLog(`Winning card: ${card.name} — Round ${G.round}, Turn ${G.turn}`,'ceki');
+  if (reveal.comboSummary) addLog(reveal.comboSummary,'ceki');
+  setTimeout(()=>{
+    document.getElementById('winnerName').textContent = p.name+' WINS!';
+    document.getElementById('winnerDetail').textContent = `${label} — ${card.name} — Round ${G.round}`;
+    document.getElementById('winnerCards').innerHTML = reveal.revealHtml;
+    document.getElementById('winnerCombos').textContent = reveal.comboSummary || 'No combo summary available';
+    document.getElementById('winnerOverlay').classList.add('show');
+  },400);
+  stopAuto();
+}
+
+function advanceTurn() {
+  G.activePlayer=(G.activePlayer+1)%5; G.turn++;
+  if (G.activePlayer===G.startPlayer) G.round++;
+}
+
+// ================================================================
+// RENDER
+// ================================================================
+function renderGame() {
+  if (!G) return;
+
+  document.getElementById('statRound').textContent = G.round;
+  document.getElementById('statTurn').textContent = G.turn;
+  document.getElementById('statDraw').textContent = G.drawPile.length;
+  document.getElementById('statActive').textContent = G.players[G.activePlayer].name;
+
+  const phasePlayers = G.players.filter(p=>p.phase!=='none');
+  document.getElementById('statPhase').textContent = phasePlayers.length
+    ? phasePlayers.map(p=>p.name+':'+p.phase.toUpperCase()).join(' | ') : 'Normal';
+
+  // Only show GANTUNG for players NOT in MECARI/MEJAGA
+  const gantungPlayers = G.players.filter((p,i)=>{
+    if (p.phase !== 'none') return false; // exempt from GANTUNG
+    const all = [...p.hand,...p.openPile];
+    return all.some(c=>isCardGantung(c,i)&&!isDeadForSoca(c));
+  });
+  document.getElementById('statGantung').textContent = gantungPlayers.length
+    ? gantungPlayers.map(p=>p.name).join(', ') : '—';
+
+  const area = document.getElementById('gameArea');
+  area.innerHTML = '';
+
+  for (let i=0; i<5; i++) {
+    const p = G.players[i];
+    const isActive = i===G.activePlayer && G.phase==='playing';
+    // Players in MECARI/MEJAGA are exempt from GANTUNG restriction
+    const hasGantung = p.phase === 'none' &&
+      [...p.hand,...p.openPile].some(c=>isCardGantung(c,i)&&!isDeadForSoca(c));
+
+    const div = document.createElement('div');
+    div.className = 'player-card' +
+      (isActive?' active':'') +
+      (p.phase==='mecari'?' mecari':'') +
+      (p.phase==='mejaga'?' mejaga':'') +
+      (G.winner===i?' winner':'');
+
+    div.innerHTML = `
+      <div class="player-header">
+        <span class="player-name">👤 ${p.name}</span>
+        ${isActive?'<span class="badge badge-active">▶ Active</span>':''}
+        ${p.phase==='mecari'?'<span class="badge badge-mecari">🔍 Mecari</span>':''}
+        ${p.phase==='mejaga'?'<span class="badge badge-mejaga">🛡 Mejaga</span>':''}
+        ${G.winner===i?'<span class="badge badge-winner">🎉 CEKI!</span>':''}
+        ${hasGantung?'<span class="badge badge-gantung">⚠ Gantung</span>':''}
+        <span class="player-stats">Hand:${p.hand.length} Open:${p.openPile.length} Discard:${p.discardPile.length}</span>
+      </div>
+      <div class="player-body">
+        ${renderPlayerRows(p, i)}
+      </div>
+    `;
+    area.appendChild(div);
+  }
+}
+
+function renderPlayerRows(p, pidx) {
+  const allCards = [...p.hand, ...p.openPile];
+  const openUids = new Set(p.openPile.map(c=>c.uid));
+  const result = findBestCombo(allCards);
+  let html = '<div class="combo-section">';
+
+  // Helper: render a card, marking open pile cards with special indicator
+  const rc = (c) => {
+    const isOpen = openUids.has(c.uid);
+    return renderCard(c, pidx, isOpen);
+  };
+
+  // Open pile cards that are in combinations get a star marker
+  const openInCombo = new Set();
+  result.combos.forEach(combo => {
+    combo.cards.forEach(c => { if(openUids.has(c.uid)) openInCombo.add(c.uid); });
+  });
+  result.leftover.forEach(c => { if(openUids.has(c.uid)) openInCombo.add(c.uid); });
+
+  // Group combos: Soca first, then Patuh, then Srigat
+  const socas   = result.combos.filter(c=>c.type==='soca');
+  const patuhs  = result.combos.filter(c=>c.type==='patuh');
+  const srigats = result.combos.filter(c=>c.type==='srigat');
+
+  // Render each Soca
+  socas.forEach((combo, idx) => {
+    const hasOpen = combo.cards.some(c=>openUids.has(c.uid));
+    html += `<div class="combo-row soca">
+      <div class="row-label soca">Soca ${socas.length>1?idx+1:''}</div>
+      <div class="cards-wrap">${combo.cards.map(c=>rc(c)).join('')}</div>
+      <span class="row-info">💎 Triplet${hasOpen?' <span style="color:var(--open-color);font-size:0.55rem">●open</span>':''}</span>
+    </div>`;
+  });
+
+  // Render each Patuh Dua
+  patuhs.forEach((combo, idx) => {
+    const hasOpen = combo.cards.some(c=>openUids.has(c.uid));
+    html += `<div class="combo-row patuh">
+      <div class="row-label patuh">Patuh ${patuhs.length>1?idx+1:''}</div>
+      <div class="cards-wrap">${combo.cards.map(c=>rc(c)).join('')}</div>
+      <span class="row-info">Two of a Kind${hasOpen?' <span style="color:var(--open-color);font-size:0.55rem">●open</span>':''}</span>
+    </div>`;
+  });
+
+  // Render each Srigat
+  srigats.forEach((combo, idx) => {
+    const hasOpen = combo.cards.some(c=>openUids.has(c.uid));
+    html += `<div class="combo-row srigat">
+      <div class="row-label srigat">Srigat ${srigats.length>1?idx+1:''}</div>
+      <div class="cards-wrap">${combo.cards.map(c=>rc(c)).join('')}</div>
+      <span class="row-info">Three of a Kind${hasOpen?' <span style="color:var(--open-color);font-size:0.55rem">●open</span>':''}</span>
+    </div>`;
+  });
+
+  // Leftover cards (unmatched — from hand or open pile)
+  if (result.leftover.length > 0) {
+    // Separate open pile leftover from hand leftover
+    const openLeftover = result.leftover.filter(c=>openUids.has(c.uid));
+    const handLeftover = result.leftover.filter(c=>!openUids.has(c.uid));
+
+    if (handLeftover.length > 0) {
+      html += `<div class="combo-row leftover">
+        <div class="row-label leftover">Loose</div>
+        <div class="cards-wrap">${handLeftover.map(c=>rc(c)).join('')}</div>
+        <span class="row-info">${handLeftover.length} unmatched</span>
+      </div>`;
+    }
+
+    // Open pile cards not in any combo shown separately
+    if (openLeftover.length > 0) {
+      const deadOpen = openLeftover.filter(c => isDeadForSoca(c));
+      const aliveOpen = openLeftover.filter(c => !isDeadForSoca(c));
+
+      // Classify alive open cards: Soca-forming vs regular
+      const socaFormingOpen = aliveOpen.filter(c => {
+        const sameInHand = p.hand.filter(h => h.id === c.id).length;
+        return sameInHand >= 2;
+      });
+      const regularOpen = aliveOpen.filter(c => {
+        const sameInHand = p.hand.filter(h => h.id === c.id).length;
+        return sameInHand < 2;
+      });
+
+      if (regularOpen.length > 0) {
+        html += `<div class="combo-row open">
+          <div class="row-label open">Open</div>
+          <div class="cards-wrap">${regularOpen.map(c=>rc(c)).join('')}</div>
+          <span class="row-info">Cannot discard until dead</span>
+        </div>`;
+      }
+
+      if (socaFormingOpen.length > 0) {
+        html += `<div class="combo-row open" style="border-color:rgba(80,224,144,0.4);background:rgba(80,224,144,0.06);">
+          <div class="row-label open" style="color:var(--soca-color);background:rgba(80,224,144,0.1);">Soca<br>Open</div>
+          <div class="cards-wrap">${socaFormingOpen.map(c=>rc(c)).join('')}</div>
+          <span class="row-info" style="color:var(--soca-color);">💎 Soca Formation — will move to Hand</span>
+        </div>`;
+      }
+
+      if (deadOpen.length > 0) {
+        html += `<div class="combo-row open" style="border-color:rgba(255,200,50,0.35);background:rgba(255,200,50,0.05);">
+          <div class="row-label open" style="color:#f0c840;background:rgba(255,200,50,0.12);">Dead<br>Open</div>
+          <div class="cards-wrap">${deadOpen.map(c=>rc(c)).join('')}</div>
+          <span class="row-info" style="color:#f0c840;">☠ Kartu Mati — will lift to Hand</span>
+        </div>`;
+      }
+    }
+  }
+
+  // If all open pile cards are in combos, show small note
+  const openNotInCombo = p.openPile.filter(c=>!openInCombo.has(c.uid));
+  // (already handled above via openLeftover)
+
+  // Locked Pile row
+  if (p.lockedCards?.length > 0) {
+    const seekText = p.phase==='mecari'
+      ? `Seeking: ${p.lockedCards[0].name}`
+      : `Seeking value: ${p.lockedCards[0].value}`;
+    html += `<div class="combo-row locked">
+      <div class="row-label locked">Locked</div>
+      <div class="cards-wrap">
+        ${p.lockedCards.map(()=>`<div class="card back">🔒</div>`).join('')}
+        <span class="seeking-info">${seekText}</span>
+      </div>
+    </div>`;
+  }
+
+  // Discard pile (last 5)
+  if (p.discardPile.length > 0) {
+    const show = p.discardPile.slice(-5);
+    const extra = p.discardPile.length - 5;
+    html += `<div class="combo-row discard">
+      <div class="row-label discard">Discard</div>
+      <div class="cards-wrap">
+        ${extra>0?`<span class="discard-count">+${extra}</span>`:''}
+        ${show.map(c=>renderCardSmall(c)).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
+function renderCard(c, playerIdx, isOpen) {
+  const deadForSoca = isDeadForSoca(c);
+  const playerInPhase = G && G.players[playerIdx] && G.players[playerIdx].phase !== 'none';
+  const gantung = !isOpen && playerIdx!==undefined && !playerInPhase && isCardGantung(c,playerIdx) && !deadForSoca;
+  const classes = ['card', c.type, isOpen?'is-open':'', deadForSoca?'dead':'', gantung?'gantung':''].filter(Boolean).join(' ');
+  const publicCopies = countPublicIdentical(c.id);
+  const title = `${c.name} (${c.type} ${c.value})${isOpen?' [Open Pile]':''}${gantung?' ⚠ GANTUNG':''}${deadForSoca?' ☠ Dead for Soca only':''} [Public: ${publicCopies}/4]`;
+  const openDot = isOpen ? `<div style="position:absolute;top:2px;right:2px;width:5px;height:5px;border-radius:50%;background:var(--open-color);opacity:0.9;z-index:3;" title="Open Pile"></div>` : '';
+
+  // Use card image if available
+  const imgUrl = CARD_IMAGES[c.id];
+  const imgContent = imgUrl
+    ? `<div class="card-img-wrap">
+        <img class="card-img" src="${imgUrl}" alt="${c.name}"
+          onerror="this.parentElement.innerHTML='<div style=\'display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:2px;\'><div style=\'font-family:Cinzel,serif;font-size:0.8rem;font-weight:700;\'>${c.value===0?'★':c.value}</div><div style=\'font-size:0.32rem;text-align:center;\'>${c.name.slice(0,8)}</div></div>'">
+       </div>
+       <div class="card-overlay">
+         <span class="card-overlay-name">${c.name}</span>
+       </div>`
+    : `<div class="cn">${c.value===0?'★':c.value}</div>
+       <div class="nm">${c.name.length>8?c.name.slice(0,8):c.name}</div>
+       <div class="tp">${c.type[0].toUpperCase()}</div>`;
+
+  return `<div class="${classes}" title="${title}" style="position:relative;">
+    ${openDot}
+    ${imgContent}
+  </div>`;
+}
+
+function renderCardSmall(c) {
+  const imgUrl = CARD_IMAGES[c.id];
+  const inner = imgUrl
+    ? `<div class="card-img-wrap"><img class="card-img" src="${imgUrl}" alt="${c.name}"
+        onerror="this.parentElement.innerHTML='<div style=\'font-family:Cinzel,serif;font-size:0.6rem;font-weight:700;\'>${c.value===0?'★':c.value}</div>'">
+       </div>`
+    : `<div class="cn" style="font-size:0.65rem">${c.value===0?'★':c.value}</div>
+       <div class="nm">${c.name.length>6?c.name.slice(0,6):c.name}</div>`;
+  return `<div class="card ${c.type}" style="width:30px;height:42px;opacity:0.65;position:relative;" title="${c.name}">
+    ${inner}
+  </div>`;
+}
+
+// ================================================================
+// AUTO PLAY
+// ================================================================
+function toggleAuto() {
+  isAutoPlaying ? stopAuto() : startAuto();
+}
+
+function startAuto() {
+  isAutoPlaying=true;
+  document.getElementById('btnAuto').textContent='⏸ Pause';
+  document.getElementById('btnStep').disabled=true;
+  runAutoStep();
+}
+
+function stopAuto() {
+  isAutoPlaying=false;
+  if (autoTimer) { clearTimeout(autoTimer); autoTimer=null; }
+  document.getElementById('btnAuto').textContent='⏵ Auto Play';
+  const bs = document.getElementById('btnStep');
+  if (bs) bs.disabled=false;
+}
+
+function runAutoStep() {
+  if (!isAutoPlaying||!G||G.phase==='ended') { stopAuto(); return; }
+  processOneTurn(); renderGame();
+  autoTimer=setTimeout(runAutoStep, parseInt(document.getElementById('speedRange').value));
+}
+
+function fastForward() {
+  if (!G||G.phase==='ended') return;
+  let steps=0;
+  while (G.phase==='playing'&&steps<500) { processOneTurn(); steps++; }
+  renderGame();
+  addLog(`Fast forwarded ${steps} turns`,'normal');
+}
+
+// ================================================================
+// LOG & EXPORT
+// ================================================================
+function addLog(msg, type) {
+  const ts = G ? `R${G.round}T${G.turn}` : '';
+  fullLog.push({ ts, msg, type, time: new Date().toLocaleTimeString() });
+
+  const log = document.getElementById('gameLog');
+  const entry = document.createElement('div');
+  entry.className = `log-entry log-${type}`;
+  entry.textContent = ts ? `[${ts}] ${msg}` : msg;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+}
+
+function clearLog() {
+  document.getElementById('gameLog').innerHTML='';
+}
+
+function exportLog() {
+  if (!fullLog.length) return;
+
+  // Build CSV
+  let csv = 'Time,Round_Turn,Type,Message\n';
+  for (let entry of fullLog) {
+    const msg = entry.msg.replace(/"/g,'""');
+    csv += `"${entry.time}","${entry.ts}","${entry.type}","${msg}"\n`;
+  }
+
+  // Build TXT
+  let txt = '=== CEKI GAME LOG ===\n';
+  txt += `Generated: ${new Date().toLocaleString()}\n`;
+  txt += '='.repeat(50)+'\n\n';
+  for (let entry of fullLog) {
+    const prefix = entry.ts ? `[${entry.ts}] ` : '';
+    txt += prefix + entry.msg + '\n';
+  }
+
+  // Download CSV
+  const csvBlob = new Blob([csv], { type:'text/csv' });
+  const csvUrl = URL.createObjectURL(csvBlob);
+  const csvA = document.createElement('a');
+  csvA.href=csvUrl; csvA.download='ceki-gamelog.csv'; csvA.click();
+  URL.revokeObjectURL(csvUrl);
+
+  // Download TXT (slight delay)
+  setTimeout(()=>{
+    const txtBlob = new Blob([txt], { type:'text/plain' });
+    const txtUrl = URL.createObjectURL(txtBlob);
+    const txtA = document.createElement('a');
+    txtA.href=txtUrl; txtA.download='ceki-gamelog.txt'; txtA.click();
+    URL.revokeObjectURL(txtUrl);
+  }, 300);
+
+  addLog('📥 Log exported as CSV + TXT','normal');
+}
+
+// Speed control
+document.getElementById('speedRange').addEventListener('input', function() {
+  document.getElementById('speedLabel').textContent = this.value+'ms';
+});
+
+function closeWinnerOverlay() {
+  document.getElementById('winnerOverlay').classList.remove('show');
+}
+
+// Init
+addLog('Welcome to Ceki Simulator v3!','round');
+addLog('Press New Game to start','normal');
+</script>
+</body>
+</html>

@@ -1282,6 +1282,7 @@ function renderCardSmall(c) {
   const inner = imgUrl
     ? `<div class="card-img-wrap">
         <img class="card-img" src="${imgUrl}" alt="${c.name}"
+          onload="this.style.opacity=1"
           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
         <div class="card-fallback" style="display:none">
           <div class="cn" style="font-size:0.65rem">${fallbackNumS}</div>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ceki Simulator v11 — Balinese Card Game</title>
+<link rel="stylesheet" href="ceki-simulator.css">
+
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">
+    <h1>🎴 CEKI</h1>
+    <p>Traditional Balinese Card Game Simulator v11</p>
+  </div>
+</div>
+
+<div class="controls-bar">
+  <button class="btn primary" id="btnNew" onclick="newGame()">⊕ New Game</button>
+  <button class="btn" id="btnStep" onclick="stepGame()" disabled>▶ Next Turn</button>
+  <button class="btn" id="btnAuto" onclick="toggleAuto()" disabled>⏵ Auto Play</button>
+  <button class="btn" id="btnFast" onclick="fastForward()" disabled>⏩ Fast Forward</button>
+  <button class="btn export" id="btnExport" onclick="exportLog()" disabled>↓ Export Log</button>
+  <div class="speed-wrap">
+    <span>Speed:</span>
+    <input type="range" id="speedRange" min="150" max="2000" value="700" step="50">
+    <span id="speedLabel">700ms</span>
+  </div>
+</div>
+
+<div class="status-bar">
+  <div class="stat"><span class="stat-label">Round</span><span class="stat-value" id="statRound">—</span></div>
+  <div class="stat"><span class="stat-label">Turn</span><span class="stat-value" id="statTurn">—</span></div>
+  <div class="stat"><span class="stat-label">Draw Pile</span><span class="stat-value" id="statDraw">—</span></div>
+  <div class="stat"><span class="stat-label">Active</span><span class="stat-value" id="statActive">—</span></div>
+  <div class="stat"><span class="stat-label">Phase</span><span class="stat-value" id="statPhase">—</span></div>
+  <div class="stat"><span class="stat-label">Gantung</span><span class="stat-value gantung" id="statGantung">—</span></div>
+</div>
+
+<div class="main">
+  <div class="game-area" id="gameArea">
+    <div class="empty-state">PRESS NEW GAME TO START</div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <span>Game Log</span>
+      <button class="btn" style="padding:2px 7px;font-size:0.5rem;" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log" id="gameLog"></div>
+    <div class="sidebar-legend">
+      <div class="leg"><div class="leg-dot" style="background:var(--soca-color)"></div>Soca</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--patuh-color)"></div>Patuh Dua</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--srigat-color)"></div>Srigat</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--open-color)"></div>Open</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--locked-color)"></div>Locked</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--gantung-color)"></div>Gantung</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--leftover-color)"></div>Leftover</div>
+      <div class="leg"><div class="leg-dot" style="background:#f0c840;border-radius:2px;"></div>Dead Open→Hand</div>
+      <div class="leg"><div class="leg-dot" style="background:var(--soca-color);border-radius:2px;"></div>Soca Open→Hand</div>
+    </div>
+  </div>
+</div>
+
+<div class="winner-overlay" id="winnerOverlay">
+  <div class="winner-box">
+    <div class="winner-ceki">CEKI!</div>
+    <div class="winner-name" id="winnerName"></div>
+    <div class="winner-detail" id="winnerDetail"></div>
+    <div class="winner-reveal">
+      <div class="winner-reveal-title">Locked Pile + Winning Card</div>
+      <div class="winner-cards" id="winnerCards"></div>
+      <div class="winner-combos" id="winnerCombos"></div>
+    </div>
+  </div>
+  <div class="winner-actions" style="display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap;">
+    <button class="btn" onclick="closeWinnerOverlay()">✕ Close</button>
+    <button class="btn primary" onclick="newGame()">⊕ New Game</button>
+  </div>
+</div>
+
+<script src="ceki-simulator.js"></script>
+</body>
+</html>

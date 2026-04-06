@@ -223,7 +223,7 @@ body::before {
 /* Draw Deck */
 .draw-area { display:flex; flex-direction:column; align-items:center; gap:4px; }
 .draw-deck {
-  position:relative; width:50px; height:80px;
+  position:relative; width:44px; height:70px;
   cursor:pointer; transition:transform 0.2s;
   filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));
 }
@@ -238,7 +238,7 @@ body::before {
 }
 
 .deck-card {
-  position:absolute; width:46px; height:76px;
+  position:absolute; width:40px; height:66px;
   border-radius:5px; border:2px solid #1a3a12;
   background:linear-gradient(135deg,var(--green-back),#1a3a12);
 }
@@ -258,7 +258,7 @@ body::before {
 /* P1 Discard in center */
 .p1-discard-area { display:flex; flex-direction:column; align-items:center; gap:4px; }
 .p1-discard-top {
-  width:46px; height:76px; border-radius:5px;
+  width:28px; height:62px; border-radius:4px;
   border:2px solid rgba(201,168,76,0.3);
   background:var(--card-bg);
   overflow:hidden; position:relative;
@@ -329,8 +329,8 @@ body::before {
 
 /* P2 Open Pile */
 .p2-open-pile {
-  min-width:46px; min-height:82px;
-  max-height:90px;
+  min-width:28px; min-height:70px;
+  max-height:74px;
   border-radius:5px;
   border:2px solid rgba(201,168,76,0.4);
   background:rgba(201,168,76,0.04);
@@ -349,19 +349,24 @@ body::before {
 
 /* P2 Discard Zone */
 .p2-discard-zone {
-  min-width:80px; min-height:82px;
-  max-width:200px; max-height:90px;
-  border-radius:5px;
-  border:2px dashed rgba(200,100,50,0.4);
-  background:rgba(200,100,50,0.04);
+  min-width:100px; min-height:96px;
+  max-width:240px; height:96px;
+  border-radius:6px;
+  border:2px dashed rgba(200,100,50,0.35);
+  background:rgba(200,100,50,0.03);
   position:relative;
   overflow-x:auto; overflow-y:hidden;
   transition:border-color 0.2s, box-shadow 0.2s;
-  scrollbar-width:none; cursor:grab;
-  white-space:nowrap;
+  scrollbar-width:none;
+  cursor:grab;
 }
 .p2-discard-zone::-webkit-scrollbar { display:none; }
 .p2-discard-zone:active { cursor:grabbing; }
+.p2-discard-zone.drop-active {
+  border-color:var(--mecari);
+  border-style:solid;
+  box-shadow:0 0 14px rgba(224,80,80,0.4);
+}
 .p2-discard-zone.drop-active {
   border-color:var(--mecari); border-style:solid;
   box-shadow:0 0 14px rgba(224,80,80,0.5);
@@ -560,25 +565,114 @@ body::before {
 }
 .btn-primary:hover { background:rgba(201,168,76,0.35); }
 
-/* Discard pile fan cards */
+/* ── DISCARD PILE — Scattered/Fan ── */
+
+/* P2 Discard container */
 .discard-fan-wrap {
   position:relative;
-  display:inline-flex;
-  align-items:flex-end;
-  min-width:80px; height:82px;
-  padding:4px 8px;
+  height:76px;
+  display:block;
+  flex-shrink:0;
 }
+
+/* Each scattered card */
 .discard-fan-card {
   position:absolute;
-  width:38px; height:75px;
+  width:28px; height:62px;
   border-radius:4px;
   border:1.5px solid rgba(200,100,50,0.5);
   background:var(--card-bg);
   overflow:hidden;
-  box-shadow:2px 2px 6px rgba(0,0,0,0.5);
-  transition:transform 0.2s;
+  box-shadow:2px 3px 8px rgba(0,0,0,0.6);
+  transition:transform 0.15s, box-shadow 0.15s;
+  cursor:pointer;
 }
-.discard-fan-card:hover { transform:translateY(-8px) !important; z-index:10 !important; }
+.discard-fan-card:hover {
+  transform:translateY(-10px) rotate(0deg) !important;
+  box-shadow:0 10px 20px rgba(0,0,0,0.7) !important;
+  z-index:50 !important;
+}
+
+/* AI open pile row */
+.ai-open-row {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+  align-items: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  max-width: 130px;
+  padding: 2px;
+}
+.ai-open-row::-webkit-scrollbar { display: none; }
+
+/* AI discard fan — smaller scattered */
+.ai-discard-fan {
+  position:relative;
+  height:56px;
+  display:block;
+}
+.ai-discard-fan-card {
+  position:absolute;
+  width:21px; height:46px;
+  border-radius:3px;
+  border:1px solid rgba(200,100,50,0.4);
+  background:var(--card-bg);
+  overflow:hidden;
+  box-shadow:1px 2px 5px rgba(0,0,0,0.5);
+  transition:transform 0.15s;
+}
+.ai-discard-fan-card:hover {
+  transform: translateY(-8px) rotate(0deg) !important;
+  z-index: 100 !important;
+}
+
+/* ── PILE CARD SIZE (75% of hand) ── */
+:root {
+  --pile-w: 28px;
+  --pile-h: 62px;
+}
+
+/* Discard pile fan — P2 */
+.discard-fan-wrap {
+  position:relative;
+  height:76px;
+  display:block;
+  flex-shrink:0;
+}
+.discard-fan-card {
+  position:absolute;
+  width:28px; height:62px;
+  border-radius:4px;
+  border:1.5px solid rgba(200,100,50,0.5);
+  background:var(--card-bg);
+  overflow:hidden;
+  box-shadow:2px 3px 8px rgba(0,0,0,0.6);
+  transition:transform 0.15s, box-shadow 0.15s;
+  cursor:pointer;
+}
+.discard-fan-card:hover {
+  transform:translateY(-10px) rotate(0deg) !important;
+  box-shadow:0 10px 20px rgba(0,0,0,0.7) !important;
+  z-index:50 !important;
+}
+
+/* Open pile row — P2 */
+.p2-open-pile .open-card {
+  width:28px; height:62px;
+  border-radius:4px;
+  border:1.5px solid rgba(201,168,76,0.55);
+  background:var(--card-bg);
+  overflow:hidden;
+  flex-shrink:0;
+  box-shadow:0 2px 8px rgba(0,0,0,0.5);
+  transition:transform 0.15s;
+  cursor:pointer;
+}
+.p2-open-pile .open-card:hover {
+  transform:translateY(-6px);
+}
 
 /* AI open pile row */
 .ai-open-row {
@@ -586,23 +680,35 @@ body::before {
   gap:2px; align-items:center;
   overflow-x:auto; overflow-y:hidden;
   scrollbar-width:none;
-  max-width:120px; padding:2px;
+  max-width:100px; padding:1px;
 }
 .ai-open-row::-webkit-scrollbar { display:none; }
+.ai-open-card {
+  width:21px; height:46px;
+  border-radius:3px;
+  border:1px solid rgba(201,168,76,0.45);
+  background:var(--card-bg);
+  overflow:hidden; flex-shrink:0;
+  box-shadow:0 1px 4px rgba(0,0,0,0.4);
+}
 
 /* AI discard fan */
 .ai-discard-fan {
   position:relative;
-  width:60px; height:44px;
-  overflow:visible;
-  cursor:pointer;
+  height:56px;
+  display:block;
 }
 .ai-discard-fan-card {
   position:absolute;
-  width:22px; height:38px;
+  width:21px; height:46px;
   border-radius:3px;
-  border:1.5px solid rgba(200,100,50,0.4);
+  border:1px solid rgba(200,100,50,0.4);
   background:var(--card-bg);
   overflow:hidden;
-  box-shadow:1px 1px 4px rgba(0,0,0,0.4);
+  box-shadow:1px 2px 5px rgba(0,0,0,0.5);
+  transition:transform 0.15s;
 }
+.ai-discard-fan-card:hover {
+  transform:translateY(-6px) rotate(0deg) !important;
+  z-index:50 !important;
+             }

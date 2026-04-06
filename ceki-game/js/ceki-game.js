@@ -1410,7 +1410,11 @@ function renderAIPlayers() {
     let openPileHTML = '';
     if (p.openPile.length > 0) {
       openPileHTML = `<div class="ai-open-row">` +
-        p.openPile.map(c => renderCardMini(c, 'open')).join('') +
+        p.openPile.map(c => `<div class="ai-open-card" title="${c.name}">${
+          CARD_IMAGES[c.id]
+            ? `<img src="${CARD_IMAGES[c.id]}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s" onload="this.style.opacity=1" onerror="this.style.display='none'">`
+            : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.35rem;font-weight:700;">${c.value===0?'★':c.value}</div>`
+        }</div>`).join('') +
         `</div>`;
     } else {
       openPileHTML = `<div class="ai-open-pile empty"></div>`;
@@ -1419,16 +1423,19 @@ function renderAIPlayers() {
     // Discard — fan/cascade (show all, overlapping)
     let discardTop = '';
     if (p.discardPile.length > 0) {
-      const overlap = 14;
-      const totalW = Math.max(44, 8 + p.discardPile.length * overlap);
+      const overlap = 12;
+      const totalW = Math.max(41, 8 + p.discardPile.length * overlap);
       const fanCards = p.discardPile.map((c, i) => {
-        const rot = ((i * 7 + 3) % 11) - 5;
+        // Same natural scatter formula as P2
+        const rotSeed = (i * 13 + i * i * 7) % 30;
+        const rot = (rotSeed - 15);
         const left = 4 + i * overlap;
+        const top = 2 + (Math.abs((i * 11) % 8) - 4);
         const imgUrl = CARD_IMAGES[c.id];
         const inner = imgUrl
           ? `<img src="${imgUrl}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s" onload="this.style.opacity=1" onerror="this.style.display='none'">`
-          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.4rem;font-weight:700;">${c.value===0?'★':c.value}</div>`;
-        return `<div class="ai-discard-fan-card" style="left:${left}px;top:3px;transform:rotate(${rot}deg);z-index:${i}" title="${c.name}">${inner}</div>`;
+          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.4rem;font-weight:700;color:#333;">${c.value===0?'★':c.value}</div>`;
+        return `<div class="ai-discard-fan-card" style="left:${left}px;top:${top}px;transform:rotate(${rot}deg);z-index:${i}" title="${c.name}">${inner}</div>`;
       }).join('');
       discardTop = `<div class="ai-discard-fan" style="width:${totalW}px">${fanCards}</div>`;
     } else {
@@ -1484,7 +1491,7 @@ function renderP1DiscardCenter() {
   const imgUrl = CARD_IMAGES[top.id];
   el.innerHTML = imgUrl
     ? `<img src="${imgUrl}" alt="${top.name}"
-        style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s;border-radius:3px;"
+        style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s;"
         onload="this.style.opacity=1"
         onerror="this.style.display='none'">`
     : `<div class="card-fallback">
@@ -1522,7 +1529,7 @@ function renderHumanPlayer() {
     p2.openPile.forEach(card => {
       const imgUrl = CARD_IMAGES[card.id];
       const div = document.createElement('div');
-      div.style.cssText = 'width:38px;height:76px;border-radius:4px;border:1.5px solid rgba(201,168,76,0.5);background:var(--card-bg);overflow:hidden;position:relative;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.4);';
+      div.className = 'open-card';
       div.title = card.name;
       if (imgUrl) {
         div.innerHTML = `<img src="${imgUrl}" alt="${card.name}"
@@ -1530,7 +1537,7 @@ function renderHumanPlayer() {
           onload="this.style.opacity=1"
           onerror="this.style.display='none'">`;
       } else {
-        div.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.5rem;font-weight:700;">${card.value===0?'★':card.value}</div>`;
+        div.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.45rem;font-weight:700;">${card.value===0?'★':card.value}</div>`;
       }
       openEl.appendChild(div);
     });
@@ -1542,35 +1549,43 @@ function renderHumanPlayer() {
   const discEl = document.getElementById('p2DiscardZone');
   discEl.innerHTML = '';
   if (p2.discardPile.length > 0) {
-    // Create fan wrap
+    // Create scattered fan wrap
     const fanWrap = document.createElement('div');
     fanWrap.className = 'discard-fan-wrap';
-    // Width = cards * overlap
-    const overlap = 22; // px per card overlap
-    const totalW = Math.max(80, 16 + p2.discardPile.length * overlap);
-    fanWrap.style.width = totalW + 'px';
+
+    // Overlap: earlier cards more stacked, recent cards more spread
+    const overlap = 28;
+    const totalW = Math.max(100, 16 + p2.discardPile.length * overlap);
+    fanWrap.style.cssText = `width:${totalW}px;height:76px`;
 
     p2.discardPile.forEach((card, i) => {
       const imgUrl = CARD_IMAGES[card.id];
       const el = document.createElement('div');
       el.className = 'discard-fan-card';
-      // Random slight rotation per card (seeded by index)
-      const rot = ((i * 7 + 3) % 11) - 5; // -5 to +5 deg
+
+      // Natural scattered rotation: mix of left & right tilt
+      // Uses prime multipliers for pseudo-random but consistent look
+      const rotSeed = (i * 13 + i * i * 7) % 30;
+      const rot = (rotSeed - 15); // -15 to +15 deg
       const left = 8 + i * overlap;
-      el.style.cssText = `left:${left}px;top:4px;transform:rotate(${rot}deg);z-index:${i};`;
+      // Slight vertical offset for depth
+      const top = 4 + (Math.abs((i * 11) % 10) - 5);
+
+      el.style.cssText = `left:${left}px;top:${top}px;transform:rotate(${rot}deg);z-index:${i};`;
       el.title = card.name;
+
       if (imgUrl) {
         el.innerHTML = `<img src="${imgUrl}" alt="${card.name}"
           style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s"
           onload="this.style.opacity=1"
           onerror="this.style.display='none'">`;
       } else {
-        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.45rem;font-weight:700;color:#333;">${card.value===0?'★':card.value}</div>`;
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.5rem;font-weight:700;color:#333;">${card.value===0?'★':card.value}</div>`;
       }
       fanWrap.appendChild(el);
     });
     discEl.appendChild(fanWrap);
-    // Auto scroll to show latest card
+    // Auto scroll to latest card
     setTimeout(() => { discEl.scrollLeft = discEl.scrollWidth; }, 50);
   } else {
     discEl.innerHTML = `<span class="pile-empty">—</span>`;

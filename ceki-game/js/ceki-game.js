@@ -1474,12 +1474,20 @@ function autoPlayHuman() {
   p2.combos = result.combos;
 
   // Step 3: Discard
-  const toDiscard = pickBestDiscardEvaluation(p2);
-  if (toDiscard) {
+  const toDiscard = aiChooseDiscard(p2, false, null);
+  if (toDiscard && canDiscard(toDiscard, p2.id, false)) {
     const hi = p2.hand.findIndex(c => c.uid === toDiscard.uid);
     if (hi >= 0) p2.hand.splice(hi, 1);
     p2.discardPile.push(toDiscard);
     addLog(`🤖 Auto: buang ${toDiscard.name}`, 'warn');
+  } else if (toDiscard) {
+    // Fallback: cari kartu yang bisa dibuang
+    const alt = p2.hand.find(c => canDiscard(c, p2.id, false));
+    if (alt) {
+      p2.hand.splice(p2.hand.findIndex(c => c.uid === alt.uid), 1);
+      p2.discardPile.push(alt);
+      addLog(`🤖 Auto: buang ${alt.name} (fallback)`, 'warn');
+    }
   }
 
   // Step 4: Check phase
@@ -1531,61 +1539,77 @@ function scheduleAI() {
 }
 
 // ================================================================
-// AI TURN (modified from processOneTurn)
+// AI TURN (based on simulator processOneTurn)
 // ================================================================
 function processAITurn() {
   const p = G.players[G.activePlayer];
-  const prevIdx = (G.activePlayer + G.players.length - 1) % G.players.length;
+  const prevIdx = (G.activePlayer + 4) % 5;
   const prevDiscard = G.players[prevIdx].discardPile;
-  const topDiscard = prevDiscard.length > 0 ? prevDiscard[prevDiscard.length - 1] : null;
+  const topDiscard = prevDiscard.length ? prevDiscard[prevDiscard.length-1] : null;
 
-  addLog(`--- ${p.name} ---`, 'action');
+  addLog(`— ${p.name} (R${G.round}/T${G.turn}) —`, 'action');
 
-  let drawnCard = null;
-  let fromDiscard = false;
+  let drawnCard = null, fromDiscard = false;
 
-  if (p.phase === 'none') {
-    const decision = aiDecide(p, topDiscard, G);
-    if (decision.takeDiscard && topDiscard) {
-      drawnCard = prevDiscard.pop();
-      p.openPile.push(drawnCard);
-      fromDiscard = true;
-      addLog(`${p.name} ambil ${drawnCard.name}`, 'action');
-    } else {
-      if (G.drawPile.length === 0) {
-        G.phase = 'ended';
-        addLog('Draw Pile habis — SERI!', 'round');
-        return;
-      }
-      drawnCard = G.drawPile.pop();
-      p.hand.push(drawnCard);
-      addLog(`${p.name} draw dari Deck`, 'normal');
-      checkDrawForPhase(drawnCard, G.activePlayer);
-      if (G.phase === 'ended') return;
-    }
+  // ── STEP 1: DRAW ──
+  const dec = aiDecide(p, topDiscard);
+  if (dec.takeDiscard && topDiscard) {
+    drawnCard = prevDiscard.pop();
+    p.openPile.push(drawnCard);
+    fromDiscard = true;
+    addLog(`${p.name} ambil ${drawnCard.name}`, 'action');
   } else {
-    if (G.drawPile.length === 0) {
-      G.phase = 'ended';
-      addLog('Draw Pile habis — SERI!', 'round');
-      return;
+    if (!G.drawPile.length) {
+      addLog('⚠ Draw pile habis — SERI!', 'round');
+      G.phase = 'ended'; return;
     }
     drawnCard = G.drawPile.pop();
     p.hand.push(drawnCard);
+    addLog(`${p.name} draw ${drawnCard.name}`, 'normal');
 
-    if (checkWin(drawnCard, p)) {
-      declareWinner(G.activePlayer, drawnCard);
-      return;
+    if (p.phase !== 'none' && checkWin(drawnCard, p)) {
+      declareWinner(G.activePlayer, drawnCard); return;
     }
     checkDrawForPhase(drawnCard, G.activePlayer);
     if (G.phase === 'ended') return;
   }
 
-  // Re-analyze
+  // ── STEP 2: DISCARD (hand kembali ke 11) ──
+  const doAIDiscard = (excludeUid) => {
+    const toDiscard = aiChooseDiscard(p, false, excludeUid);
+    if (!toDiscard) return;
+    if (!canDiscard(toDiscard, p.id, false)) {
+      // GANTUNG — cari alternatif
+      const alt = p.hand.find(c =>
+        c.uid !== toDiscard.uid &&
+        (excludeUid ? c.uid !== excludeUid : true) &&
+        canDiscard(c, p.id, false)
+      );
+      const target = alt || p.hand.find(c => excludeUid ? c.uid !== excludeUid : true);
+      if (target) {
+        p.hand.splice(p.hand.findIndex(c => c.uid === target.uid), 1);
+        p.discardPile.push(target);
+        addLog(`${p.name} buang ${target.name}`, 'normal');
+      }
+    } else {
+      const hi = p.hand.findIndex(c => c.uid === toDiscard.uid);
+      if (hi >= 0) p.hand.splice(hi, 1);
+      p.discardPile.push(toDiscard);
+      addLog(`${p.name} buang ${toDiscard.name}`, 'normal');
+    }
+  };
+
+  if (!fromDiscard) {
+    doAIDiscard(null);
+  } else {
+    doAIDiscard(drawnCard.uid);
+  }
+
+  // ── STEP 3: CHECK PHASE ──
   const allCards = [...p.hand, ...p.openPile];
   const result = findBestCombo(allCards);
   p.combos = result.combos;
 
-  // Check phase
   if (p.phase === 'none') {
     const phaseCheck = checkPhase(p);
     if (phaseCheck) {
@@ -1598,25 +1622,10 @@ function processAITurn() {
         const oi = p.openPile.findIndex(c => c.uid === lc.uid);
         if (oi >= 0) p.openPile.splice(oi, 1);
       }
-      addLog(`${p.name} masuk ${p.phase.toUpperCase()}!`, p.phase === 'mecari' ? 'mecari' : 'mejaga');
-      advanceTurn();
-      return;
+      addLog(`${p.name} masuk ${p.phase.toUpperCase()}!`,
+        p.phase === 'mecari' ? 'mecari' : 'mejaga');
     }
   }
-
-  // Discard
-  const toDiscard = fromDiscard
-    ? aiChooseDiscardExcluding(p, drawnCard)
-    : pickBestDiscardEvaluation(p);
-
-  if (toDiscard) {
-    doDiscard(p, toDiscard, G.activePlayer);
-    addLog(`${p.name} buang ${toDiscard.name}`, 'normal');
-  }
-
-  // Re-analyze after discard
-  const r2 = findBestCombo([...p.hand, ...p.openPile]);
-  p.combos = r2.combos;
 
   advanceTurn();
 }

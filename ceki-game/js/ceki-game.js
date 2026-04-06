@@ -741,261 +741,13 @@ function aiChooseDiscard(player, enteringPhase=false, excludeUid=null) {
 // ================================================================
 // GAME LOGIC
 // ================================================================
-function newGame() {
-  stopAuto();
-  document.getElementById('winnerOverlay').classList.remove('show');
-  fullLog = [];
+// [simulator newGame removed — see newGame() in game layer]
 
-  let deck = riffleShuffle(buildDeck());
-  const players = Array.from({length:5},(_,i)=>({
-    id:i, name:'Player '+(i+1),
-    hand:[], openPile:[], discardPile:[],
-    phase:'none', lockedCards:[], combos:[],
-  }));
+// [stepGame removed — using processAITurn in game layer]
 
-  const dealOrder = [0,4,3,2,1];
-  let idx = 0;
-  for (let r=0;r<11;r++) for (let pi of dealOrder) players[pi].hand.push(deck[idx++]);
+// [processOneTurn removed — using processAITurn in game layer]
 
-  G = { players, drawPile:deck.slice(idx), round:1, turn:1, activePlayer:0, phase:'playing', winner:null, startPlayer:0 };
-  for (let p of G.players) p.combos = findBestCombo(p.hand).combos;
-
-  addLog('=== GAME STARTED ===','round');
-  addLog(`Riffle Shuffle x8 — 120 cards dealt`,'normal');
-  addLog(`Draw pile: ${G.drawPile.length} cards`,'draw');
-  addLog(`Round 1 — Player 1 starts`,'round');
-
-  ['btnStep','btnAuto','btnFast','btnExport'].forEach(id=>document.getElementById(id).disabled=false);
-  renderGame();
-}
-
-function stepGame() {
-  if (!G||G.phase==='ended') return;
-  processOneTurn();
-  renderGame();
-}
-
-function processOneTurn() {
-  const p = G.players[G.activePlayer];
-  const prevIdx = (G.activePlayer+4)%5;
-  const prevDiscard = G.players[prevIdx].discardPile;
-  const topDiscard = prevDiscard.length ? prevDiscard[prevDiscard.length-1] : null;
-
-  addLog(`— ${p.name} (R${G.round}/T${G.turn}) —`,'action');
-
-  let drawnCard = null, fromDiscard = false;
-
-  // ── STEP 1: DRAW ──
-  const dec = aiDecide(p, topDiscard);
-  if (dec.takeDiscard && topDiscard) {
-    drawnCard = prevDiscard.pop();
-    p.openPile.push(drawnCard);
-    fromDiscard = true;
-    addLog(`${p.name} takes ${drawnCard.name} from discard`,'action');
-  } else {
-    if (!G.drawPile.length) {
-      addLog('⚠ Draw pile empty — DRAW/SERI!','mecari');
-      G.phase='ended'; return;
-    }
-    drawnCard = G.drawPile.pop();
-    p.hand.push(drawnCard);
-    // hand is now 12 cards
-    addLog(`${p.name} draws ${drawnCard.name}`,'draw');
-
-    // Win check: own card (if already in phase)
-    if (p.phase !== 'none' && checkWin(drawnCard, p)) {
-      declareWinner(G.activePlayer, drawnCard); return;
-    }
-    // Win check: show to other phase players
-    checkDrawForPhase(drawnCard, G.activePlayer);
-    if (G.phase === 'ended') return;
-  }
-
-  // ── STEP 2: DISCARD (hand goes back to 11) ──
-  const doDiscard = (excludeUid) => {
-    const toDiscard = aiChooseDiscard(p, false, excludeUid);
-    if (!toDiscard) return;
-
-    if (!canDiscard(toDiscard, p.id, false)) {
-      // Kartu terpilih adalah GANTUNG — cari alternatif
-      addLog(`⚠ GANTUNG! ${p.name} cannot discard ${toDiscard.name}`, 'gantung');
-
-      // Cari kartu lain yang bisa dibuang (bukan gantung, bukan excludeUid)
-      const alt = p.hand.find(c =>
-        c.uid !== toDiscard.uid &&
-        (excludeUid ? c.uid !== excludeUid : true) &&
-        canDiscard(c, p.id, false)
-      );
-
-      if (alt) {
-        p.hand.splice(p.hand.findIndex(c=>c.uid===alt.uid), 1);
-        p.discardPile.push(alt);
-        addLog(`${p.name} discards ${alt.name} instead`, 'normal');
-      } else {
-        // Semua kartu di tangan adalah gantung — HARUS buang kartu gantung
-        // Per GDD: kartu gantung hanya bisa dibuang setelah menjadi Kartu Mati
-        // Jika semua gantung dan tidak ada yang mati, cari yang paling "aman" dibuang
-        // (least valuable gantung card — ini edge case yang sangat jarang)
-        const anyCard = p.hand.find(c => excludeUid ? c.uid !== excludeUid : true);
-        if (anyCard) {
-          p.hand.splice(p.hand.findIndex(c=>c.uid===anyCard.uid), 1);
-          p.discardPile.push(anyCard);
-          addLog(`⚠ GANTUNG PAKSA: ${p.name} forced to discard ${anyCard.name} (all cards gantung)`, 'gantung');
-        }
-        // Note: hand count must always return to 11 — no "hold" allowed
-      }
-    } else {
-      const hi = p.hand.findIndex(c=>c.uid===toDiscard.uid);
-      if (hi >= 0) p.hand.splice(hi, 1);
-      p.discardPile.push(toDiscard);
-      addLog(`${p.name} discards ${toDiscard.name}`, 'normal');
-    }
-  };
-
-  if (!fromDiscard) {
-    doDiscard(null);
-  } else {
-    doDiscard(drawnCard.uid); // cannot discard the card just taken from discard
-  }
-
-  // ── STEP 2b: Aksi Bebas — Open Pile → Hand (dua kondisi) ──
-  // Dilakukan SETELAH draw+discard, SEBELUM checkPhase. Tidak mengurangi turn.
-  //
-  // Kondisi 1: SOCA FORMATION
-  //   Hand punya 2 kartu identik + Open Pile punya 1 kartu identik = 3 = Soca
-  //   → Kartu Open Pile dipindah ke Hand, terkunci sebagai Soca
-  //   → Status GANTUNG pemain sebelumnya otomatis netral (Open Pile kosong)
-  //
-  // Kondisi 2: KARTU MATI
-  //   Kartu di Open Pile sudah menjadi Kartu Mati (3+ public identical)
-  //   → Dipindah ke Hand, bisa dibuang atau dipakai sebagai ekor
-  if (p.phase === 'none') {
-
-    // ── Kondisi 1: Soca Formation dari Open Pile ──
-    const socaFormed = [];
-    for (const openCard of [...p.openPile]) {
-      // Hitung kartu identik di Hand
-      const sameInHand = p.hand.filter(c => c.id === openCard.id);
-      if (sameInHand.length >= 2) {
-        // Soca terbentuk! Pindahkan kartu Open Pile ke Hand
-        const oi = p.openPile.findIndex(c => c.uid === openCard.uid);
-        if (oi >= 0) p.openPile.splice(oi, 1);
-        p.hand.push(openCard);
-        socaFormed.push(openCard);
-        addLog(`💎 ${p.name} completes SOCA: ${openCard.name} Open→Hand (free action)`, 'mecari');
-        addLog(`${p.name} GANTUNG for ${openCard.name} is now neutral`, 'normal');
-      }
-    }
-
-    // Kunci kartu Soca: tandai agar tidak dibuang oleh AI
-    // (checkPhase akan mendeteksi sebagai Soca dan masuk MECARI/MEJAGA)
-
-    // ── Kondisi 2: Kartu Mati di Open Pile → angkat ke Hand ──
-    // FIX Issue 1: proses satu per satu dari openPile langsung (bukan snapshot)
-    // untuk mencegah double-lift kartu yang sama UID
-    let liftIdx = 0;
-    while (liftIdx < p.openPile.length) {
-      const openCard = p.openPile[liftIdx];
-      if (isDeadForSoca(openCard)) {
-        // Angkat ke hand — splice dulu BARU push, tidak pakai index lama
-        p.openPile.splice(liftIdx, 1); // liftIdx tidak naik karena array bergeser
-        p.hand.push(openCard);
-        addLog(`${p.name} lifts dead card ${openCard.name} Open→Hand (free action)`, 'normal');
-        // Tidak increment liftIdx — posisi liftIdx sekarang adalah kartu berikutnya
-      } else {
-        liftIdx++; // kartu ini tidak diangkat, lanjut ke berikutnya
-      }
-    }
-
-    // ── Setelah lifting: jika total kartu > 11, buang excess ──
-    // Excess terjadi karena lift menambah kartu ke hand
-    // Prioritas buang: Kartu Mati yang tidak masuk kombinasi apapun
-    const totalCards = p.hand.length + p.openPile.length;
-    if (totalCards > 11) {
-      const excess = totalCards - 11;
-      for (let e = 0; e < excess; e++) {
-        const allCurrent = [...p.hand, ...p.openPile];
-        const currentResult = findBestCombo(allCurrent);
-        const comboUids = new Set();
-        currentResult.combos.forEach(combo => combo.cards.forEach(c => comboUids.add(c.uid)));
-
-        // Buang: Kartu Mati yang tidak masuk combo (bukan ekor)
-        const deadInHand = p.hand.filter(c =>
-          isDeadForSoca(c) &&
-          canDiscard(c, p.id, false) &&
-          !comboUids.has(c.uid)
-        );
-
-        const toDiscard = deadInHand[0] ||
-          p.hand.find(c => isDeadForSoca(c) && canDiscard(c, p.id, false)) ||
-          p.hand.find(c => canDiscard(c, p.id, false) && !comboUids.has(c.uid)) ||
-          p.hand.find(c => canDiscard(c, p.id, false));
-
-        if (toDiscard) {
-          p.hand.splice(p.hand.findIndex(c => c.uid === toDiscard.uid), 1);
-          p.discardPile.push(toDiscard);
-          addLog(`${p.name} discards ${toDiscard.name} (excess after lift)`, 'normal');
-        }
-      }
-    }
-  }
-
-  // ── STEP 3: CHECK PHASE (after discard, hand = 11 cards) ──
-  // KEY FIX: check AFTER discard so hand has exactly 11 cards
-  // 11 = 3+3+3+2 → leftover=2 → MECARI/MEJAGA possible!
-  if (p.phase === 'none') {
-    const pc = checkPhase(p);
-    if (pc) {
-      p.phase = pc.phase;
-      p.lockedCards = pc.lockedCards;
-      p.combos = pc.combos;
-      for (let lc of p.lockedCards) {
-        const hi = p.hand.findIndex(c=>c.uid===lc.uid); if(hi>=0) p.hand.splice(hi,1);
-        const oi = p.openPile.findIndex(c=>c.uid===lc.uid); if(oi>=0) p.openPile.splice(oi,1);
-      }
-      addLog(p.phase==='mecari'
-        ? `🔍 ${p.name} enters MECARI! Seeking: ${p.lockedCards[0].name}`
-        : `🛡 ${p.name} enters MEJAGA! Seeking val:${p.lockedCards[0].value}`,
-        p.phase);
-    }
-  }
-
-  p.combos = findBestCombo([...p.hand,...p.openPile]).combos;
-  advanceTurn();
-}
-
-function checkDrawForPhase(drawnCard, drawingIdx) {
-  // Guard: game may already be ended if drawing player won themselves
-  if (G.phase === 'ended') return;
-  const candidates = G.players.filter((_,i)=>i!==drawingIdx&&(G.players[i].phase==='mecari'||G.players[i].phase==='mejaga'));
-  const winners = candidates.filter(p=>checkWin(drawnCard,p));
-  if (!winners.length) return;
-  addLog(`${G.players[drawingIdx].name} reveals ${drawnCard.name}`,'normal');
-  if (winners.length===1) { declareWinner(winners[0].id,drawnCard); return; }
-
-  // Tiebreaker Step 1: MEJAGA menang atas MECARI (per GDD)
-  const mejagaWinners = winners.filter(p=>p.phase==='mejaga');
-  const mecariWinners = winners.filter(p=>p.phase==='mecari');
-  const finalCandidates = mejagaWinners.length > 0 ? mejagaWinners : mecariWinners;
-
-  if (finalCandidates.length === 1) {
-    addLog(`Tiebreaker: ${finalCandidates[0].name} wins (MEJAGA > MECARI)`,'mejaga');
-    declareWinner(finalCandidates[0].id, drawnCard);
-    return;
-  }
-
-  // Tiebreaker Step 2: pemain berikutnya dalam urutan giliran
-  let idx = (drawingIdx+1)%5;
-  for (let i=0;i<5;i++) {
-    if (finalCandidates.includes(G.players[idx])) {
-      addLog(`Tiebreaker: ${G.players[idx].name} wins (next in turn order)`,'mejaga');
-      declareWinner(G.players[idx].id, drawnCard);
-      return;
-    }
-    idx=(idx+1)%5;
-  }
-}
-
+// [checkDrawForPhase defined in game layer]
 
 function formatComboLabel(type) {
   if (type === 'soca') return 'SOCA';
@@ -1020,48 +772,22 @@ function buildWinnerReveal(player, winningCard) {
   return { finalCards, analysis, revealHtml, comboSummary };
 }
 
-function declareWinner(playerIdx, card) {
-  const p = G.players[playerIdx];
-  G.phase='ended'; G.winner=playerIdx;
-  const label = p.phase==='mejaga'?'MEJAGA':'MECARI';
-  const reveal = buildWinnerReveal(p, card);
-  addLog(`🎉 CEKI! ${p.name} WINS! (${label})`,'ceki');
-  addLog(`Winning card: ${card.name} — Round ${G.round}, Turn ${G.turn}`,'ceki');
-  if (reveal.comboSummary) addLog(reveal.comboSummary,'ceki');
-  setTimeout(()=>{
-    document.getElementById('winnerName').textContent = p.name+' WINS!';
-    document.getElementById('winnerDetail').textContent = `${label} — ${card.name} — Round ${G.round}`;
-    document.getElementById('winnerCards').innerHTML = reveal.revealHtml;
-    document.getElementById('winnerCombos').textContent = reveal.comboSummary || 'No combo summary available';
-    document.getElementById('winnerOverlay').classList.add('show');
-  },400);
-  stopAuto();
-}
+// [declareWinner defined in game layer below]
 
-function advanceTurn() {
-  G.activePlayer=(G.activePlayer+1)%5; G.turn++;
-  if (G.activePlayer===G.startPlayer) G.round++;
-}
+// [advanceTurn defined in game layer]
+
 
 // ================================================================
-// HUMAN PLAYER LAYER
-// ================================================================
-
-// ================================================================
-// HUMAN PLAYER (P2) INDEX
+// GAME CONSTANTS & STATE
 // ================================================================
 const HUMAN_IDX = 1; // Player 2 = index 1
 
-// ================================================================
-// GAME STATE EXTENSION
-// ================================================================
 let humanState = 'idle'; // idle | step_draw | step_discard | timeout
 let dragData = null;
 let logVisible = false;
+let aiTimer = null;
 
-// ================================================================
-// TIMER MANAGER
-// ================================================================
+// ── TIMER MANAGER ──
 const Timer = {
   duration: 30,
   remaining: 30,
@@ -1093,10 +819,8 @@ const Timer = {
     const bar = document.getElementById('timerBar');
     const txt = document.getElementById('timerText');
     const icon = document.getElementById('timerIcon');
-
     bar.style.width = pct + '%';
     txt.textContent = `Giliran Kamu — ${this.remaining} detik`;
-
     bar.classList.remove('warn', 'urgent');
     if (this.remaining <= 5) {
       bar.classList.add('urgent');
@@ -1117,9 +841,6 @@ const Timer = {
   }
 };
 
-// ================================================================
-// HUMAN STATE MACHINE
-// ================================================================
 function setHumanState(state) {
   humanState = state;
   const deck = document.getElementById('drawDeck');
@@ -1516,7 +1237,6 @@ function autoPlayHuman() {
 // ================================================================
 // AI TURN SCHEDULER
 // ================================================================
-let aiTimer = null;
 
 function scheduleAI() {
   if (!G || G.phase === 'ended') return;

@@ -1406,15 +1406,34 @@ function renderAIPlayers() {
     const closedCards = Array(Math.min(p.hand.length, 8)).fill(0)
       .map(() => `<div class="card-back-mini"></div>`).join('');
 
-    // Open pile
-    const openPileHTML = p.openPile.length > 0
-      ? renderCardMini(p.openPile[p.openPile.length-1])
-      : `<div class="ai-open-pile empty"></div>`;
+    // Open pile — ALL cards in row
+    let openPileHTML = '';
+    if (p.openPile.length > 0) {
+      openPileHTML = `<div class="ai-open-row">` +
+        p.openPile.map(c => renderCardMini(c, 'open')).join('') +
+        `</div>`;
+    } else {
+      openPileHTML = `<div class="ai-open-pile empty"></div>`;
+    }
 
-    // Discard top
-    const discardTop = p.discardPile.length > 0
-      ? renderCardMini(p.discardPile[p.discardPile.length-1])
-      : `<div class="ai-discard-top empty"></div>`;
+    // Discard — fan/cascade (show all, overlapping)
+    let discardTop = '';
+    if (p.discardPile.length > 0) {
+      const overlap = 14;
+      const totalW = Math.max(44, 8 + p.discardPile.length * overlap);
+      const fanCards = p.discardPile.map((c, i) => {
+        const rot = ((i * 7 + 3) % 11) - 5;
+        const left = 4 + i * overlap;
+        const imgUrl = CARD_IMAGES[c.id];
+        const inner = imgUrl
+          ? `<img src="${imgUrl}" alt="${c.name}" style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s" onload="this.style.opacity=1" onerror="this.style.display='none'">`
+          : `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.4rem;font-weight:700;">${c.value===0?'★':c.value}</div>`;
+        return `<div class="ai-discard-fan-card" style="left:${left}px;top:3px;transform:rotate(${rot}deg);z-index:${i}" title="${c.name}">${inner}</div>`;
+      }).join('');
+      discardTop = `<div class="ai-discard-fan" style="width:${totalW}px">${fanCards}</div>`;
+    } else {
+      discardTop = `<div class="ai-discard-top empty"></div>`;
+    }
 
     // GANTUNG indicator
     const gantungHTML = isGantungActive(playerIdx)
@@ -1461,18 +1480,13 @@ function renderP1DiscardCenter() {
     return;
   }
 
-  // Render card image
+  // Show top card only (P1 discard center — this is what P2 can take)
   const imgUrl = CARD_IMAGES[top.id];
   el.innerHTML = imgUrl
-    ? `<div class="card-img-wrap" style="position:absolute;inset:0;overflow:hidden;">
-        <img class="card-img" src="${imgUrl}" alt="${top.name}"
-          onload="this.style.opacity=1"
-          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-        <div class="card-fallback" style="display:none">
-          <span class="cn">${top.value===0?'★':top.value}</span>
-          <span class="nm">${top.name.slice(0,6)}</span>
-        </div>
-       </div>`
+    ? `<img src="${imgUrl}" alt="${top.name}"
+        style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s;border-radius:3px;"
+        onload="this.style.opacity=1"
+        onerror="this.style.display='none'">`
     : `<div class="card-fallback">
         <span class="cn">${top.value===0?'★':top.value}</span>
         <span class="nm">${top.name.slice(0,6)}</span>
@@ -1501,42 +1515,63 @@ function renderHumanPlayer() {
     badge.classList.add('hidden');
   }
 
-  // Open Pile P2
+  // Open Pile P2 — ALL cards in row
   const openEl = document.getElementById('p2OpenPile');
   openEl.innerHTML = '';
   if (p2.openPile.length > 0) {
-    const top = p2.openPile[p2.openPile.length-1];
-    const imgUrl = CARD_IMAGES[top.id];
-    openEl.innerHTML = imgUrl
-      ? `<div class="card-img-wrap" style="position:absolute;inset:0;overflow:hidden;">
-          <img class="card-img" src="${imgUrl}" alt="${top.name}"
-            onload="this.style.opacity=1"
-            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-          <div class="card-fallback" style="display:none">
-            <span class="cn">${top.value===0?'★':top.value}</span>
-          </div>
-         </div>`
-      : `<div class="card-fallback"><span class="cn">${top.value===0?'★':top.value}</span></div>`;
+    p2.openPile.forEach(card => {
+      const imgUrl = CARD_IMAGES[card.id];
+      const div = document.createElement('div');
+      div.style.cssText = 'width:38px;height:76px;border-radius:4px;border:1.5px solid rgba(201,168,76,0.5);background:var(--card-bg);overflow:hidden;position:relative;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,0.4);';
+      div.title = card.name;
+      if (imgUrl) {
+        div.innerHTML = `<img src="${imgUrl}" alt="${card.name}"
+          style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s"
+          onload="this.style.opacity=1"
+          onerror="this.style.display='none'">`;
+      } else {
+        div.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.5rem;font-weight:700;">${card.value===0?'★':card.value}</div>`;
+      }
+      openEl.appendChild(div);
+    });
   } else {
     openEl.innerHTML = `<span class="pile-empty">—</span>`;
   }
 
-  // Discard Zone P2
+  // Discard Zone P2 — fan/cascade, scrollable
   const discEl = document.getElementById('p2DiscardZone');
   discEl.innerHTML = '';
   if (p2.discardPile.length > 0) {
-    const top = p2.discardPile[p2.discardPile.length-1];
-    const imgUrl = CARD_IMAGES[top.id];
-    discEl.innerHTML = imgUrl
-      ? `<div class="card-img-wrap" style="position:absolute;inset:0;overflow:hidden;">
-          <img class="card-img" src="${imgUrl}" alt="${top.name}"
-            onload="this.style.opacity=1"
-            onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-          <div class="card-fallback" style="display:none">
-            <span class="cn">${top.value===0?'★':top.value}</span>
-          </div>
-         </div>`
-      : `<div class="card-fallback"><span class="cn">${top.value===0?'★':top.value}</span></div>`;
+    // Create fan wrap
+    const fanWrap = document.createElement('div');
+    fanWrap.className = 'discard-fan-wrap';
+    // Width = cards * overlap
+    const overlap = 22; // px per card overlap
+    const totalW = Math.max(80, 16 + p2.discardPile.length * overlap);
+    fanWrap.style.width = totalW + 'px';
+
+    p2.discardPile.forEach((card, i) => {
+      const imgUrl = CARD_IMAGES[card.id];
+      const el = document.createElement('div');
+      el.className = 'discard-fan-card';
+      // Random slight rotation per card (seeded by index)
+      const rot = ((i * 7 + 3) % 11) - 5; // -5 to +5 deg
+      const left = 8 + i * overlap;
+      el.style.cssText = `left:${left}px;top:4px;transform:rotate(${rot}deg);z-index:${i};`;
+      el.title = card.name;
+      if (imgUrl) {
+        el.innerHTML = `<img src="${imgUrl}" alt="${card.name}"
+          style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s"
+          onload="this.style.opacity=1"
+          onerror="this.style.display='none'">`;
+      } else {
+        el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:Cinzel,serif;font-size:0.45rem;font-weight:700;color:#333;">${card.value===0?'★':card.value}</div>`;
+      }
+      fanWrap.appendChild(el);
+    });
+    discEl.appendChild(fanWrap);
+    // Auto scroll to show latest card
+    setTimeout(() => { discEl.scrollLeft = discEl.scrollWidth; }, 50);
   } else {
     discEl.innerHTML = `<span class="pile-empty">—</span>`;
   }
@@ -1607,16 +1642,20 @@ function renderHumanHand(p2) {
   }
 }
 
-function renderCardMini(c) {
+function renderCardMini(c, type='discard') {
   const imgUrl = CARD_IMAGES[c.id];
+  const style = type === 'open'
+    ? 'width:22px;height:38px;border-radius:3px;border:1.5px solid rgba(201,168,76,0.5);background:var(--card-bg);overflow:hidden;position:relative;flex-shrink:0;'
+    : 'width:22px;height:38px;border-radius:3px;border:1.5px solid rgba(200,100,50,0.4);background:var(--card-bg);overflow:hidden;position:relative;flex-shrink:0;';
   return imgUrl
-    ? `<div class="ai-discard-top" style="position:relative;overflow:hidden;">
-        <img class="card-img" src="${imgUrl}" alt="${c.name}"
+    ? `<div style="${style}" title="${c.name}">
+        <img src="${imgUrl}" alt="${c.name}"
+          style="width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity 0.3s"
           onload="this.style.opacity=1"
           onerror="this.style.display='none'">
        </div>`
-    : `<div class="ai-discard-top">
-        <span class="cn" style="font-size:0.45rem;">${c.value===0?'★':c.value}</span>
+    : `<div style="${style}display:flex;align-items:center;justify-content:center;" title="${c.name}">
+        <span style="font-family:Cinzel,serif;font-size:0.4rem;font-weight:700;">${c.value===0?'★':c.value}</span>
        </div>`;
 }
 
@@ -1818,6 +1857,47 @@ document.addEventListener('dragend', () => {
   dragData = null;
 });
 
+
+// ================================================================
+// SCROLL DRAG for Discard Pile (touch + mouse)
+// ================================================================
+function initScrollDrag(el) {
+  let isDown = false, startX, scrollLeft;
+  el.addEventListener('mousedown', e => {
+    // Only activate if not a drag-drop operation
+    if (e.target.draggable) return;
+    isDown = true;
+    el.style.cursor = 'grabbing';
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  el.addEventListener('mouseleave', () => { isDown = false; el.style.cursor = 'grab'; });
+  el.addEventListener('mouseup',    () => { isDown = false; el.style.cursor = 'grab'; });
+  el.addEventListener('mousemove', e => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    el.scrollLeft = scrollLeft - walk;
+  });
+  // Touch
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  }, { passive:true });
+  el.addEventListener('touchmove', e => {
+    const x = e.touches[0].pageX - el.offsetLeft;
+    el.scrollLeft = scrollLeft - (x - startX) * 1.5;
+  }, { passive:true });
+}
+
+// Init scroll drag after DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+  const discZone = document.getElementById('p2DiscardZone');
+  if (discZone) initScrollDrag(discZone);
+  const openPile = document.getElementById('p2OpenPile');
+  if (openPile) initScrollDrag(openPile);
+});
 // Handle dragleave for drop zones
 document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.drop-target').forEach(el => {

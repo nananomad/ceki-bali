@@ -1,1 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Ceki — Balinese Card Game</title>
+<link rel="stylesheet" href="css/ceki-game.css">
+</head>
+<body>
+
+<!-- TIMER BAR -->
+<div id="timerWrap" class="timer-wrap hidden">
+  <div class="timer-label">
+    <span id="timerIcon">⏱</span>
+    <span id="timerText">Giliran Kamu — 30 detik</span>
+  </div>
+  <div class="timer-track">
+    <div id="timerBar" class="timer-bar"></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <span class="mode-badge">🎴 CEKI</span>
+    <span id="statRound" class="stat-badge">Ronde 1</span>
+    <span id="statDraw" class="stat-badge">Draw: 65</span>
+  </div>
+  <div class="header-right">
+    <button class="btn-sm" onclick="newGame()">⊕ New Game</button>
+    <button class="btn-sm" onclick="toggleLog()">📋 Log</button>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusBar" class="status-bar">
+  <span id="statusText">Tekan New Game untuk mulai</span>
+</div>
+
+<!-- PHASE / GANTUNG BAR -->
+<div id="infoBar" class="info-bar hidden">
+  <span id="phaseInfo"></span>
+  <span id="gantungInfo"></span>
+</div>
+
+<!-- GAME TABLE -->
+<div class="game-table">
+
+  <!-- AI PLAYERS ROW -->
+  <div class="ai-row">
+    <div id="player-0" class="ai-slot"></div>  <!-- P1 -->
+    <div id="player-2" class="ai-slot"></div>  <!-- P3 -->
+    <div id="player-3" class="ai-slot"></div>  <!-- P4 -->
+    <div id="player-4" class="ai-slot"></div>  <!-- P5 -->
+  </div>
+
+  <!-- CENTER — Draw Deck -->
+  <div class="center-row">
+    <div class="draw-area">
+      <div id="drawDeck" class="draw-deck" onclick="humanClickDraw()">
+        <div class="deck-card"></div>
+        <div class="deck-card"></div>
+        <div class="deck-card"></div>
+      </div>
+      <div class="deck-info">
+        <span id="deckCount" class="deck-count">65</span>
+        <span class="deck-label">DRAW</span>
+      </div>
+    </div>
+
+    <!-- Discard P1 (AI sebelum P2) — bisa di-drag P2 -->
+    <div class="p1-discard-area">
+      <div class="pile-label">Discard P1</div>
+      <div id="p1DiscardTop" class="p1-discard-top"
+        draggable="false"
+        ondragstart="handleDragDiscardP1(event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- ACTION HINT -->
+  <div id="actionHint" class="action-hint hidden"></div>
+
+  <!-- HUMAN PLAYER (P2) -->
+  <div class="human-area">
+
+    <!-- P2 header: avatar + open pile + discard -->
+    <div class="p2-header">
+      <div class="p2-avatar-wrap">
+        <div id="p2Avatar" class="p2-avatar">👤</div>
+        <span class="p2-name">Player 2 (Kamu)</span>
+        <span id="p2PhaseBadge" class="phase-badge hidden"></span>
+      </div>
+
+      <!-- Open Pile P2 — drop target dari discard P1 -->
+      <div class="p2-pile-wrap">
+        <div class="pile-label">Open Pile</div>
+        <div id="p2OpenPile" class="p2-open-pile drop-target"
+          ondragover="handleDragOver(event)"
+          ondrop="handleDropOpenPile(event)">
+          <span class="pile-empty">—</span>
+        </div>
+      </div>
+
+      <!-- Discard P2 — drop target untuk buang kartu -->
+      <div class="p2-pile-wrap">
+        <div class="pile-label">Discard</div>
+        <div id="p2DiscardZone" class="p2-discard-zone drop-target"
+          ondragover="handleDragOver(event)"
+          ondrop="handleDropDiscard(event)">
+          <span class="pile-empty">—</span>
+        </div>
+        <span id="p2DiscardCount" class="pile-count"></span>
+      </div>
+    </div>
+
+    <!-- Hand P2 -->
+    <div class="p2-hand-wrap">
+      <div class="hand-label">
+        <span>Hand</span>
+        <button class="btn-sort" onclick="autoSortHand()">↕ Sort</button>
+      </div>
+      <div id="p2Hand" class="p2-hand"
+        ondragover="handleDragOverHand(event)"
+        ondrop="handleDropHand(event)">
+        <!-- Cards rendered here -->
+      </div>
+    </div>
+
+  </div><!-- human-area -->
+
+</div><!-- game-table -->
+
+<!-- LOG PANEL -->
+<div id="logPanel" class="log-panel hidden">
+  <div class="log-header">
+    <span>Game Log</span>
+    <button class="btn-sm" onclick="toggleLog()">✕</button>
+  </div>
+  <div id="gameLog" class="game-log"></div>
+</div>
+
+<!-- WINNER OVERLAY -->
+<div id="winnerOverlay" class="winner-overlay hidden">
+  <div class="winner-box">
+    <div class="winner-ceki">CEKI!</div>
+    <div id="winnerName" class="winner-name"></div>
+    <div id="winnerDetail" class="winner-detail"></div>
+    <div id="winnerCards" class="winner-cards"></div>
+    <button class="btn-primary" onclick="newGame()">⊕ New Game</button>
+  </div>
+</div>
+
+<script src="js/ceki-game.js"></script>
+</body>
+</html>
 
